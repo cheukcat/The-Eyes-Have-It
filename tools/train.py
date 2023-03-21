@@ -20,7 +20,7 @@ warnings.filterwarnings("ignore")
 def pass_print(*args, **kwargs):
     pass
 
-#TODO: 重构train.py
+
 def main(local_rank, args):
     # global settings
     torch.backends.cudnn.benchmark = True
@@ -69,12 +69,7 @@ def main(local_rank, args):
     logger.info(f'Config:\n{cfg.pretty_text}')
 
     # build model
-    if cfg.get('occupancy', False):
-        from builder import tpv_occupancy_builder as model_builder
-    else:
-        from builder import tpv_lidarseg_builder as model_builder
-
-    my_model = model_builder.build(cfg.model)
+    my_model = build_model(cfg.model)
     n_parameters = sum(p.numel() for p in my_model.parameters() if p.requires_grad)
     logger.info(f'Number of params: {n_parameters}')
     if distributed:
@@ -94,9 +89,9 @@ def main(local_rank, args):
     unique_label = np.asarray(cfg.unique_label)
     unique_label_str = [SemKITTI_label_name[x] for x in unique_label]
 
-    from builder import data_builder
+    # build dataloader
     train_dataset_loader, val_dataset_loader = \
-        data_builder.build(
+        build_dataloader(
             dataset_config,
             train_dataloader_config,
             val_dataloader_config,
@@ -108,8 +103,7 @@ def main(local_rank, args):
 
     # get optimizer, loss, scheduler
     optimizer = build_optimizer(my_model, cfg.optimizer)
-    loss_func, lovasz_softmax = \
-        loss_builder.build(ignore_label=ignore_label)
+    loss_func, lovasz_softmax = build_loss(ignore_label=ignore_label)
     scheduler = CosineLRScheduler(
         optimizer,
         t_initial=len(train_dataset_loader) * max_num_epochs,
