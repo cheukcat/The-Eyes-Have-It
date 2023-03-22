@@ -135,8 +135,8 @@ def main(local_rank, args):
 if __name__ == '__main__':
     # Training settings
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--py-config', default='config/tpv_lidarseg.py')
-    parser.add_argument('--work-dir', type=str, default='./out/tpv_lidarseg')
+    parser.add_argument('--py-config', default='config/vanilla_occ/vanilla_occ_r50_fpn_1x_nus-mini.py')
+    parser.add_argument('--work-dir', type=str, default='./work_dirs/vanilla_occ_r50_fpn_1x_nus-mini.py')
     parser.add_argument('--resume-from', type=str, default='')
 
     args = parser.parse_args()

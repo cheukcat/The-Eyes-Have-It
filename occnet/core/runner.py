@@ -45,36 +45,22 @@ class Runner:
         data_time_s = time.time()
         time_s = time.time()
         loss_ce, loss_lovasz = self.loss_func
-        for i_iter, (imgs, img_metas, train_vox_label, train_grid, train_pt_labs) in enumerate(self.train_dataloader):
+        for i_iter, (imgs, img_metas, train_vox_label, train_grid, train_pt_labs) \
+                in enumerate(self.train_dataloader):
             imgs = imgs.cuda()
             train_grid = train_grid.to(torch.float32).cuda()
-            # TODO: points is not needed for occ
-            if self.cfg.lovasz_input == 'voxel' or self.cfg.ce_input == 'voxel':
-                voxel_label = train_vox_label.type(torch.LongTensor).cuda()
-            if self.cfg.lovasz_input == 'points' or self.cfg.ce_input == 'points':
-                train_pt_labs = train_pt_labs.cuda()
+            # train_pt_labs is not needed in training
+            labels = train_vox_label.type(torch.LongTensor).cuda()
             # forward + backward + optimize
             data_time_e = time.time()
-            outputs_vox, outputs_pts = self.model(img=imgs,
-                                                  img_metas=img_metas,
-                                                  points=train_grid)
-            if self.cfg.lovasz_input == 'voxel':
-                lovasz_input = outputs_vox
-                lovasz_label = voxel_label
-            else:
-                lovasz_input = outputs_pts
-                lovasz_label = train_pt_labs
-            if self.cfg.ce_input == 'voxel':
-                ce_input = outputs_vox
-                ce_label = voxel_label
-            else:
-                ce_input = outputs_pts.squeeze(-1).squeeze(-1)
-                ce_label = train_pt_labs.squeeze(-1)
-
+            output = self.model(img=imgs,
+                                img_metas=img_metas,
+                                points=train_grid)
+            # compute loss
             loss = loss_lovasz(
-                torch.nn.functional.softmax(lovasz_input, dim=1),
-                lovasz_label, ignore=self.ignore_label
-            ) + loss_ce(ce_input, ce_label)
+                torch.nn.functional.softmax(output, dim=1),
+                labels, ignore=self.ignore_label
+            ) + loss_ce(output, labels)
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -104,7 +90,7 @@ class Runner:
                 'scheduler': self.scheduler.state_dict(),
                 'epoch': epoch + 1,
                 'global_iter': self.global_iter,
-                'best_val_miou_vox': self.best_val_miou
+                'best_val_miou': self.best_val_miou
             }
             save_file_name = os.path.join(os.path.abspath(self.work_dir), f'epoch_{epoch + 1}.pth')
             torch.save(dict_to_save, save_file_name)
@@ -117,51 +103,31 @@ class Runner:
         val_loss_list = []
         self.evaluator.reset()
         loss_ce, loss_lovasz = self.loss_func
-        for i_iter_val, (imgs, img_metas, val_vox_label, val_grid, val_pt_labs) in enumerate(self.val_dataloader):
+        for i_iter_val, (imgs, img_metas, val_vox_label, val_grid, val_pts_label) \
+                in enumerate(self.val_dataloader):
             imgs = imgs.cuda()
+            labels = val_vox_label.cuda()
             val_grid_float = val_grid.to(torch.float32).cuda()
             val_grid_int = val_grid.to(torch.long).cuda()
-            vox_label = val_vox_label.cuda()
-            val_pt_labs = val_pt_labs.cuda()
-
-            predict_labels_vox, predict_labels_pts = self.model(img=imgs,
-                                                                img_metas=img_metas,
-                                                                points=val_grid_float)
-            if self.cfg.lovasz_input == 'voxel':
-                lovasz_input = predict_labels_vox
-                lovasz_label = vox_label
-            else:
-                lovasz_input = predict_labels_pts
-                lovasz_label = val_pt_labs
-
-            if self.cfg.ce_input == 'voxel':
-                ce_input = predict_labels_vox
-                ce_label = vox_label
-            else:
-                ce_input = predict_labels_pts.squeeze(-1).squeeze(-1)
-                ce_label = val_pt_labs.squeeze(-1)
-
+            val_pts_label = val_pts_label.squeeze(-1).cpu()
+            output = self.model(img=imgs,
+                                img_metas=img_metas,
+                                points=val_grid_float)
+            # compute loss
             loss = loss_lovasz(
-                torch.nn.functional.softmax(lovasz_input, dim=1).detach(),
-                lovasz_label, ignore=self.ignore_label
-            ) + loss_ce(ce_input.detach(), ce_label)
+                torch.nn.functional.softmax(output, dim=1).detach(),
+                labels, ignore=self.ignore_label
+            ) + loss_ce(output.detach(), labels)
 
-            predict_labels_pts = predict_labels_pts.squeeze(-1).squeeze(-1)
-            predict_labels_pts = torch.argmax(predict_labels_pts, dim=1)  # bs, n
-            predict_labels_pts = predict_labels_pts.detach().cpu()
-            val_pt_labs = val_pt_labs.squeeze(-1).cpu()
-
-            predict_labels_vox = torch.argmax(predict_labels_vox, dim=1)
-            predict_labels_vox = predict_labels_vox.detach().cpu()
+            output = torch.argmax(output, dim=1)
+            output = output.detach().cpu()
             for count in range(len(val_grid_int)):
-                self.evaluator.after_step(predict_labels_pts[count], val_pt_labs[count])
                 self.evaluator.after_step(
-                    predict_labels_vox[
-                        count,
-                        val_grid_int[count][:, 0],
-                        val_grid_int[count][:, 1],
-                        val_grid_int[count][:, 2]].flatten(),
-                    val_pt_labs[count])
+                    output[count,
+                           val_grid_int[count][:, 0],
+                           val_grid_int[count][:, 1],
+                           val_grid_int[count][:, 2]].flatten(),
+                    val_pts_label[count])
             val_loss_list.append(loss.detach().cpu().numpy())
             if i_iter_val % self.cfg.print_freq == 0 and self.rank == 0:
                 self.logger.info('[EVAL] Epoch %d Iter %5d: Loss: %.3f (%.3f)' % (
