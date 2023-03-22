@@ -9,22 +9,20 @@ class MeanIoU:
     def __init__(self,
                  class_indices,
                  ignore_label: int,
-                 label_str,
-                 name
+                 label_str
                  # empty_class: int
                  ):
         self.class_indices = class_indices
         self.num_classes = len(class_indices)
         self.ignore_label = ignore_label
         self.label_str = label_str
-        self.name = name
 
     def reset(self) -> None:
         self.total_seen = torch.zeros(self.num_classes).cuda()
         self.total_correct = torch.zeros(self.num_classes).cuda()
         self.total_positive = torch.zeros(self.num_classes).cuda()
 
-    def _after_step(self, outputs, targets):
+    def after_step(self, outputs, targets):
         outputs = outputs[targets != self.ignore_label]
         targets = targets[targets != self.ignore_label]
 
@@ -34,7 +32,7 @@ class MeanIoU:
                                                torch.isclose(outputs, c)).item()
             self.total_positive[i] += torch.sum(torch.isclose(outputs, c)).item()
 
-    def _after_epoch(self):
+    def after_epoch(self):
         dist.all_reduce(self.total_seen)
         dist.all_reduce(self.total_correct)
         dist.all_reduce(self.total_positive)
@@ -52,7 +50,7 @@ class MeanIoU:
 
         miou = np.mean(ious)
         logger = get_root_logger()
-        logger.info(f'Validation per class iou {self.name}:')
+        logger.info(f'Validation per class iou:')
         for iou, label_str in zip(ious, self.label_str):
             logger.info('%s : %.2f%%' % (label_str, iou * 100))
 

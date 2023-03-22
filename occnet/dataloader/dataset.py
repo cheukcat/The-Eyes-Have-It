@@ -105,12 +105,12 @@ class ImagePoint_NuScenes(data.Dataset):
         return input_dict
 
 
-def get_nuScenes_label_name(label_mapping):
+def get_nus_label_name(label_mapping):
     with open(label_mapping, 'r') as stream:
-        nuScenesyaml = yaml.safe_load(stream)
-    nuScenes_label_name = dict()
-    for i in sorted(list(nuScenesyaml['learning_map'].keys()))[::-1]:
-        val_ = nuScenesyaml['learning_map'][i]
-        nuScenes_label_name[val_] = nuScenesyaml['labels_16'][val_]
+        nus_yaml = yaml.safe_load(stream)
+    nus_label_name = dict()
+    for i in sorted(list(nus_yaml['learning_map'].keys()))[::-1]:
+        val_ = nus_yaml['learning_map'][i]
+        nus_label_name[val_] = nus_yaml['labels_16'][val_]
 
-    return nuScenes_label_name
+    return nus_label_name
