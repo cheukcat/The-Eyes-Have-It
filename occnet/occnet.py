@@ -21,10 +21,8 @@ class VanillaOccupancy(BaseModule):
         self.img_backbone = builder.build_backbone(img_backbone)
         if img_neck is not None:
             self.img_neck = builder.build_neck(img_neck)
-        if view_transformer is not None:
-            self.view_transformer = builder.build_neck(view_transformer)
-        if occ_head is not None:
-            self.occ_head = builder.build_head(occ_head)
+        self.view_transformer = builder.build_neck(view_transformer)
+        self.occ_head = builder.build_head(occ_head)
 
     @auto_fp16(apply_to='img')
     def extract_img_feat(self, img):
