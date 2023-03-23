@@ -1,5 +1,6 @@
 from mmcv.runner import auto_fp16, BaseModule
 from mmseg.models import SEGMENTORS, builder
+from occnet import build_view_transformer
 import warnings
 
 
@@ -21,7 +22,7 @@ class VanillaOccupancy(BaseModule):
         self.img_backbone = builder.build_backbone(img_backbone)
         if img_neck is not None:
             self.img_neck = builder.build_neck(img_neck)
-        self.view_transformer = builder.build_neck(view_transformer)
+        self.view_transformer = build_view_transformer(view_transformer)
         self.occ_head = builder.build_head(occ_head)
 
     @auto_fp16(apply_to='img')

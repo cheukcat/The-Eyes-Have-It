@@ -5,6 +5,17 @@ from .utils import lovasz_softmax
 from .dataloader import ImagePoint_NuScenes, \
     custom_collate_fn, DatasetWrapper_NuScenes
 
+from mmcv.cnn import MODELS as MMCV_MODELS
+from mmcv.utils import Registry
+
+MODELS = Registry('models', parent=MMCV_MODELS)
+VIEW_TRANSFORMERS = MODELS
+
+
+def build_view_transformer(vt_config):
+    """Build view transformer"""
+    return VIEW_TRANSFORMERS.build(vt_config)
+
 
 def build_model(model_config):
     model = build_segmentor(model_config)
