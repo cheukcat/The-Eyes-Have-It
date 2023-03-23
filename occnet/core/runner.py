@@ -5,6 +5,7 @@ import mmcv
 import numpy as np
 import os.path as osp
 
+from torch.utils.tensorboard import SummaryWriter
 from occnet.utils import revise_ckpt, revise_ckpt_2
 
 
@@ -35,6 +36,7 @@ class Runner:
         self.rank = rank
         self.best_val_miou = 0
         self.global_iter = 0
+        self.writer = SummaryWriter(osp.join(self.work_dir, 'tf_logs'))
 
     def train_epoch(self, epoch):
         self.model.train()
@@ -44,7 +46,7 @@ class Runner:
         time.sleep(10)
         data_time_s = time.time()
         time_s = time.time()
-        loss_ce, loss_lovasz = self.loss_func
+        loss_func_ce, loss_func_lovasz = self.loss_func
         for i_iter, (imgs, img_metas, train_vox_label, train_grid, train_pt_labs) \
                 in enumerate(self.train_dataloader):
             imgs = imgs.cuda()
@@ -57,10 +59,15 @@ class Runner:
                                 img_metas=img_metas,
                                 points=train_grid)
             # compute loss
-            loss = loss_lovasz(
+            loss_lovasz = loss_func_lovasz(
                 torch.nn.functional.softmax(output, dim=1),
-                labels, ignore=self.ignore_label
-            ) + loss_ce(output, labels)
+                labels, ignore=self.ignore_label)
+            loss_ce = loss_func_ce(output, labels)
+            loss = loss_lovasz + loss_ce
+            # writer to tensorboard
+            self.writer.add_scalar('train/loss_lovasz', loss_lovasz, self.global_iter)
+            self.writer.add_scalar('train/loss_ce', loss_ce, self.global_iter)
+            self.writer.add_scalar('train/loss', loss, self.global_iter)
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -102,7 +109,7 @@ class Runner:
         self.model.eval()
         val_loss_list = []
         self.evaluator.reset()
-        loss_ce, loss_lovasz = self.loss_func
+        loss_func_ce, loss_func_lovasz = self.loss_func
         for i_iter_val, (imgs, img_metas, val_vox_label, val_grid, val_pts_label) \
                 in enumerate(self.val_dataloader):
             imgs = imgs.cuda()
@@ -114,10 +121,10 @@ class Runner:
                                 img_metas=img_metas,
                                 points=val_grid_float)
             # compute loss
-            loss = loss_lovasz(
+            loss = loss_func_lovasz(
                 torch.nn.functional.softmax(output, dim=1).detach(),
                 labels, ignore=self.ignore_label
-            ) + loss_ce(output.detach(), labels)
+            ) + loss_func_ce(output.detach(), labels)
 
             output = torch.argmax(output, dim=1)
             output = output.detach().cpu()
@@ -136,7 +143,9 @@ class Runner:
         val_miou = self.evaluator.after_epoch()
         if self.best_val_miou < val_miou:
             self.best_val_miou = val_miou
-
+        # writer to logger
+        self.writer.add_scalar('val/loss', np.mean(val_loss_list), self.global_iter)
+        self.writer.add_scalar('val/miou', val_miou, self.global_iter)
         self.logger.info('Current val miou is %.3f while the best val miou vox is %.3f' %
                          (val_miou, self.best_val_miou))
         self.logger.info('Current val loss is %.3f' %
@@ -184,3 +193,4 @@ class Runner:
             self.train_epoch(epoch)
             self.eval_epoch(epoch)
             epoch += 1
+        self.writer.close()
