@@ -2,6 +2,7 @@ import argparse
 import numpy as np
 import os
 import os.path as osp
+import sys
 import time
 import warnings
 
@@ -10,8 +11,11 @@ import torch.distributed as dist
 from mmcv import Config
 from mmcv.runner import build_optimizer
 from mmseg.utils import get_root_logger
+from pathlib import Path
 from timm.scheduler import CosineLRScheduler
 
+CUR_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(str(CUR_DIR))
 from occnet import build_loss, build_model, build_dataloader
 from occnet.core import Runner
 from occnet.dataloader import get_nus_label_name

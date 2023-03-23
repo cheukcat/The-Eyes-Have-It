@@ -1,9 +1,9 @@
 dataset_params = dict(
     version="v1.0-trainval",
     ignore_label=0,
-    fill_label=0,
+    fill_label=17,
     fixed_volume_space=True,
-    label_mapping="./config/label_mapping/nuscenes.yaml",
+    label_mapping="./configs/_base_/label_mapping/nuscenes-noIgnore.yaml",
     max_volume_space=[51.2, 51.2, 3],
     min_volume_space=[-51.2, -51.2, -5],
 )
