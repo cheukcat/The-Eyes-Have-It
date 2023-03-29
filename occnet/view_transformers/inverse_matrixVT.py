@@ -125,7 +125,8 @@ class InverseMatrixVT(BaseModule):
         vt /= vt.sum(0).clip(min=1)
         return vt.unsqueeze(0)
 
-    def _fuse_img_feats(self, img_feats):
+    def _fuse_img_feats(self, img_feats, img_metas):
+        # img_feats: [(B * N, C, H, W), ...]
         output = self.scale_heads[0](img_feats[0])
         for i in range(1, len(self.feature_strides)):
             # non inplace
@@ -136,6 +137,11 @@ class InverseMatrixVT(BaseModule):
                              mode='nearest',
                              align_corners=None)
             output = output + tmp
+        # reshape to B, N, C, H, W
+        B = len(img_metas)
+        BN, C, H, W = output.shape
+        output = output.view(B, -1, C, H, W)
+        return output
 
     def forward(self, img_feats, img_metas):
         pass
