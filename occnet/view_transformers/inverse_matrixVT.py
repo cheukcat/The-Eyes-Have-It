@@ -2,28 +2,55 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+from mmcv.cnn import ConvModule
 from mmcv.runner import BaseModule, force_fp32, auto_fp16
 from occnet import VIEW_TRANSFORMERS
-from occnet.utils import multi_apply
+from occnet.utils import (multi_apply, Upsample, resize,
+                          BilinearDeconvolution)
 
 
 @VIEW_TRANSFORMERS.register_module()
 class InverseMatrixVT(BaseModule):
     def __init__(self,
+                 in_channels,
+                 channels,
+                 feature_strides,
+                 norm_cfg=None,
+                 act_cfg=dict(type='ReLU'),
                  grid_size=[100, 100, 8],
                  x_bound=[-51.2, 51.2],
                  y_bound=[-51.2, 51.2],
                  z_bound=[-5., 3.],
-                 sampling_rate=4,
-                 ds_rate=32.):
+                 sampling_rate=4):
         super().__init__()
         self.grid_size = torch.tensor(grid_size)
         self.x_bound = x_bound
         self.y_bound = y_bound
         self.z_bound = z_bound
         self.sampling_rate = sampling_rate
-        self.ds_rate = ds_rate
+        assert isinstance(feature_strides, list)
+        self.feature_strides = feature_strides
+        self.ds_rate = min(feature_strides)
         self.coord = self._create_gridmap_anchor()
+        # img feats fusion
+        self.scale_heads = nn.ModuleList()
+        for i in range(len(feature_strides)):
+            head_length = max(
+                1,
+                int(np.log2(feature_strides[i]) - np.log2(feature_strides[0])))
+            scale_head = []
+            for k in range(head_length):
+                scale_head.append(
+                    ConvModule(
+                        in_channels[i] if k == 0 else channels,
+                        channels,
+                        3,
+                        padding=1,
+                        norm_cfg=norm_cfg,
+                        act_cfg=act_cfg))
+                if feature_strides[i] != feature_strides[0]:
+                    scale_head.append(BilinearDeconvolution(channels))
+            self.scale_heads.append(nn.Sequential(*scale_head))
 
     def _create_gridmap_anchor(self):
         # create a gridmap anchor with shape of (X, Y, Z, sampling_rate**3, 3)
@@ -97,3 +124,18 @@ class InverseMatrixVT(BaseModule):
         vt[ref_points_flatten[valid_idx[:, 0], valid_idx[:, 1]], valid_idx[:, 0]] = 1
         vt /= vt.sum(0).clip(min=1)
         return vt.unsqueeze(0)
+
+    def _fuse_img_feats(self, img_feats):
+        output = self.scale_heads[0](img_feats[0])
+        for i in range(1, len(self.feature_strides)):
+            # non inplace
+            tmp = self.scale_heads[i](img_feats[i])
+            if tmp.shape != output.shape:
+                tmp = resize(tmp,
+                             size=output.shape[2:],
+                             mode='nearest',
+                             align_corners=None)
+            output = output + tmp
+
+    def forward(self, img_feats, img_metas):
+        pass
