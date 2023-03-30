@@ -151,4 +151,4 @@ class InverseMatrixVT(BaseModule):
         img_feats = img_feats.permute(0, 2, 1, 3, 4).view(B, C, -1)
         # B, C, X * Y * Z
         occ_feats = torch.matmul(img_feats, vt_matrix)
-        return bev_feats
+        return occ_feats
