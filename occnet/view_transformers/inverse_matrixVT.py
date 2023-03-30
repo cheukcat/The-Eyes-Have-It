@@ -125,7 +125,7 @@ class InverseMatrixVT(BaseModule):
         vt /= vt.sum(0).clip(min=1)
         return vt.unsqueeze(0)
 
-    def _fuse_img_feats(self, img_feats, img_metas):
+    def fuse_img_feats(self, img_feats, img_metas):
         # img_feats: [(B * N, C, H, W), ...]
         output = self.scale_heads[0](img_feats[0])
         for i in range(1, len(self.feature_strides)):
@@ -144,4 +144,11 @@ class InverseMatrixVT(BaseModule):
         return output
 
     def forward(self, img_feats, img_metas):
-        pass
+        img_feats = self.fuse_img_feats(img_feats, img_metas)
+        vt_matrix = self.get_vt_matrix(img_feats, img_metas)
+        # reshape img_feats
+        B, N, C, H, W = img_feats.shape
+        img_feats = img_feats.permute(0, 2, 1, 3, 4).view(B, C, -1)
+        # B, C, X * Y * Z
+        bev_feats = torch.matmul(img_feats, vt_matrix)
+        return bev_feats
