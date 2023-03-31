@@ -62,9 +62,9 @@ class VanillaHead(BaseModule):
         # multiply to expand, and add up
         xyz_feat = xy_feat.view(B, C, X, Y, 1) * xz_feat.view(B, C, X, 1, Z) + \
                    xy_feat.view(B, C, X, Y, 1) * yz_feat.view(B, C, 1, Y, Z)
-
-        xyz_feat = self.fc(xyz_feat.view(B, C, -1))
-        logtis = self.classifier(xyz_feat)
+        # reshape and fc
+        xyz_feat = self.fc(xyz_feat.view(B, C, -1).transpose(1, 2))
+        logtis = self.classifier(xyz_feat)  # (B, XYZ, C)
 
         return logtis
 
