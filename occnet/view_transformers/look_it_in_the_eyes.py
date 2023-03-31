@@ -8,7 +8,7 @@ from occnet.utils import (multi_apply, resize, BilinearDeconvolution)
 
 
 @VIEW_TRANSFORMERS.register_module()
-class InverseMatrixVT(BaseModule):
+class LookItInTheEyes(BaseModule):
     def __init__(self,
                  in_channels,
                  channels,
@@ -119,34 +119,12 @@ class InverseMatrixVT(BaseModule):
         # ref_points_flatten: (X * Y * Z, Nc * S), 1: H * W * nc + W * h + w
         ref_points_flatten = ref_points[..., 2] * H * W + \
                              ref_points[..., 1] * W + ref_points[..., 0]
-        # factorize 3D
-        #TODO: not check yet!
-        ref_points_flatten = ref_points_flatten.reshape(X, Y, Z, -1)
-        ref_points_x = ref_points_flatten.permute(1, 2, 3, 0).view(Y * Z, -1)
-        ref_points_y = ref_points_flatten.permute(0, 2, 3, 1).view(X * Z, -1)
-        ref_points_z = ref_points_flatten.permute(0, 1, 3, 2).view(X * Y, -1)
-
         # create vt matrix
-        vt_x = img_feat.new_zeros(Nc * H * W, Y * Z)
-        vt_y = img_feat.new_zeros(Nc * H * W, X * Z)
-        vt_z = img_feat.new_zeros(Nc * H * W, X * Y)
-        valid_idx_x = torch.nonzero(ref_points_x > 0)
-        valid_idx_y = torch.nonzero(ref_points_y > 0)
-        valid_idx_z = torch.nonzero(ref_points_z > 0)
-        vt_x[ref_points_x[valid_idx_x[:, 0],
-                          valid_idx_x[:, 1]],
-             valid_idx_x[:, 0]] = 1
-        vt_x /= vt_x.sum(0).clip(min=1)
-        vt_y[ref_points_y[valid_idx_y[:, 0],
-                          valid_idx_y[:, 1]],
-             valid_idx_y[:, 0]] = 1
-        vt_y /= vt_y.sum(0).clip(min=1)
-        vt_z[ref_points_z[valid_idx_z[:, 0],
-                          valid_idx_z[:, 1]],
-             valid_idx_z[:, 0]] = 1
-        vt_z /= vt_z.sum(0).clip(min=1)
-
-        return vt_x.unsqueeze(0), vt_y.unsqueeze(0), vt_z.unsqueeze(0)
+        vt = img_feat.new_zeros(Nc * H * W, X * Y * Z)
+        valid_idx = torch.nonzero(ref_points_flatten > 0)
+        vt[ref_points_flatten[valid_idx[:, 0], valid_idx[:, 1]], valid_idx[:, 0]] = 1
+        vt /= vt.sum(0).clip(min=1)
+        return vt.unsqueeze(0)
 
     def fuse_img_feats(self, img_feats, img_metas):
         # img_feats: [(B * N, C, H, W), ...]
