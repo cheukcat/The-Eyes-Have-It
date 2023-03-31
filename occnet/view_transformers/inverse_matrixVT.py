@@ -27,6 +27,8 @@ class InverseMatrixVT(BaseModule):
         self.z_bound = z_bound
         self.sampling_rate = sampling_rate
         assert isinstance(feature_strides, list)
+        assert isinstance(in_channels, list)
+        assert len(in_channels) == len(feature_strides)
         self.feature_strides = feature_strides
         self.ds_rate = min(feature_strides)
         self.coord = self._create_gridmap_anchor()
@@ -85,12 +87,12 @@ class InverseMatrixVT(BaseModule):
         lidar2img = img_feat.new_tensor(lidar2img)
         img_shape = img_meta['img_shape']
         # global_coord: (X * Y * Z, Nc, S, 4, 1)
-        global_coord = self.coord.clone()
+        global_coord = self.coord.clone().to(lidar2img.device)
         X, Y, Z, S, _ = global_coord.shape
         global_coord = global_coord.view(X * Y * Z, 1, S, 4, 1) \
             .repeat(1, Nc, 1, 1, 1)
         # lidar2img: (X * Y * Z, Nc, S, 4, 4)
-        lidar2img = lidar2img.view(1, Nc, 1, 4, 4) \
+        lidar2img = lidar2img.unsqueeze(0).unsqueeze(2) \
             .repeat(X * Y * Z, 1, S, 1, 1)
         # ref_points: (X * Y * Z, Nc, S, 4), 4: (λW, λH, λ, 1)
         ref_points = torch.matmul(lidar2img.to(torch.float32),
@@ -107,7 +109,8 @@ class InverseMatrixVT(BaseModule):
         ref_points = torch.div(ref_points[..., :2],
                                self.ds_rate,
                                rounding_mode='floor').to(torch.long)
-        cam_index = torch.arange(Nc).unsqueeze(0).unsqueeze(2) \
+        cam_index = torch.arange(Nc, device=lidar2img.device)\
+            .unsqueeze(0).unsqueeze(2) \
             .repeat(X * Y * Z, 1, S).unsqueeze(-1)
         # ref_points: (X * Y * Z, Nc * S, 3), 3: (W, H, Nc)
         ref_points = torch.cat([ref_points, cam_index], dim=-1)
@@ -146,7 +149,7 @@ class InverseMatrixVT(BaseModule):
         vt_matrix = self.get_vt_matrix(img_feats, img_metas)
         # reshape img_feats
         B, N, C, H, W = img_feats.shape
-        img_feats = img_feats.permute(0, 2, 1, 3, 4).view(B, C, -1)
+        img_feats = img_feats.permute(0, 2, 1, 3, 4).reshape(B, C, -1)
         # B, C, X * Y * Z
         occ_feats = torch.matmul(img_feats, vt_matrix)
         return occ_feats
