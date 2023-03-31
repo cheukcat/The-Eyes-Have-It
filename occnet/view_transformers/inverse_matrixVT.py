@@ -1,12 +1,10 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import numpy as np
 from mmcv.cnn import ConvModule
-from mmcv.runner import BaseModule, force_fp32, auto_fp16
+from mmcv.runner import BaseModule, force_fp32
 from occnet import VIEW_TRANSFORMERS
-from occnet.utils import (multi_apply, Upsample, resize,
-                          BilinearDeconvolution)
+from occnet.utils import (multi_apply, resize, BilinearDeconvolution)
 
 
 @VIEW_TRANSFORMERS.register_module()
