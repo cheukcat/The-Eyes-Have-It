@@ -8,9 +8,11 @@ An intuitive approach for 3D Occupancy Detection
 ### Goal
 **1.** A 3D OCC approach that balances accuracy, inference speed, deployability and simplicity.
 
-**2.** CVPR 2023 OCC challenge
+**2.** A baseline that could be trained on generalized GPUs.
 
-**3.** Deployed on an automotive-grade platform with real-time fps.
+**3.** CVPR 2023 OCC challenge!
+
+**4.** Deployed on an automotive-grade platform with real-time fps.
 ### Method
 **1.** Inverse MatrixVT with complexity：
 $$(N_c * H * W) * (Z * X * Y) * C$$
