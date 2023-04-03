@@ -100,9 +100,9 @@ class InverseMatrixVT(BaseModule):
         # factorize 3D
         # TODO: not check yet!
         ref_points_flatten = ref_points_flatten.reshape(X, Y, Z, -1)
-        ref_points_x = ref_points_flatten.permute(1, 2, 3, 0).view(Y * Z, -1)
-        ref_points_y = ref_points_flatten.permute(0, 2, 3, 1).view(X * Z, -1)
-        ref_points_z = ref_points_flatten.permute(0, 1, 3, 2).view(X * Y, -1)
+        ref_points_x = ref_points_flatten.permute(1, 2, 3, 0).reshape(Y * Z, -1)
+        ref_points_y = ref_points_flatten.permute(0, 2, 3, 1).reshape(X * Z, -1)
+        ref_points_z = ref_points_flatten.permute(0, 1, 3, 2).reshape(X * Y, -1)
 
         # create vt matrix
         vt_x = img_feat.new_zeros(Nc * H * W, Y * Z)
