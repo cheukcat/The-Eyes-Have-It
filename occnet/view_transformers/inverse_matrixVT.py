@@ -121,7 +121,7 @@ class InverseMatrixVT(BaseModule):
              valid_idx_z[:, 0]] = 1
         vt_z /= vt_z.sum(0).clip(min=1)
 
-        return vt_x.unsqueeze(0), vt_y.unsqueeze(0), vt_z.unsqueeze(0)
+        return vt_x, vt_y, vt_z
 
     def forward(self, img_feats, img_metas):
         img_feats = img_feats[self.in_index]
