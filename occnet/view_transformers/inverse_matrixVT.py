@@ -54,7 +54,7 @@ class InverseMatrixVT(BaseModule):
         batch_vt = multi_apply(self._get_vt_matrix_single,
                                img_feats,
                                img_metas)
-        return torch.stack(batch_vt[0])
+        return torch.stack(batch_vt[0]), torch.stack(batch_vt[1]), torch.stack(batch_vt[2])
 
     @force_fp32(apply_to=('img_feat', 'img_meta'))
     def _get_vt_matrix_single(self, img_feat, img_meta):
