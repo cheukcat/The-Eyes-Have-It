@@ -26,7 +26,7 @@ class VanillaOccupancy(BaseModule):
         self.occ_head = builder.build_head(occ_head)
 
     @auto_fp16(apply_to='img')
-    def extract_img_feat(self, img, reshape=False):
+    def extract_img_feat(self, img):
         """Extract features of images."""
         B, N, C, H, W = img.shape
         img = img.view(B * N, C, H, W)
@@ -34,13 +34,11 @@ class VanillaOccupancy(BaseModule):
         if hasattr(self, 'img_neck'):
             img_feats = self.img_neck(img_feats)
 
-        if reshape:
-            img_feats_reshaped = []
-            for img_feat in img_feats:
-                _, C, H, W = img_feat.shape
-                img_feats_reshaped.append(img_feat.view(B, -1, C, H, W))
-            img_feats = tuple(img_feats_reshaped)
-        return img_feats
+        img_feats_reshaped = []
+        for img_feat in img_feats:
+            _, C, H, W = img_feat.shape
+            img_feats_reshaped.append(img_feat.view(B, -1, C, H, W))
+        return img_feats_reshaped
 
     @auto_fp16(apply_to=('img', 'points'))
     def forward(self, img, img_metas=None, points=None, **kwargs):
