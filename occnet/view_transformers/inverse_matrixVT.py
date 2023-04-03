@@ -125,12 +125,13 @@ class InverseMatrixVT(BaseModule):
 
     def forward(self, img_feats, img_metas):
         img_feats = img_feats[self.in_index]
-        vt_x, vt_y, vt_z = self.get_vt_matrix(img_feats, img_metas)
+        vt_yz, vt_xz, vt_xy = self.get_vt_matrix(img_feats, img_metas)
         # flatten img_feats
         B, N, C, H, W = img_feats.shape
         img_feats = img_feats.permute(0, 2, 1, 3, 4).reshape(B, C, -1)
         # B, C, (Y * Z, X * Z, X * Y)
-        occ_feats_x = torch.matmul(img_feats, vt_x)
-        occ_feats_y = torch.matmul(img_feats, vt_y)
-        occ_feats_z = torch.matmul(img_feats, vt_z)
-        return occ_feats_x, occ_feats_y, occ_feats_z
+        X, Y, Z = self.grid_size
+        occ_feats_yz = torch.matmul(img_feats, vt_yz).view(B, C, Y, Z)
+        occ_feats_xz = torch.matmul(img_feats, vt_xz).view(B, C, X, Z)
+        occ_feats_xy = torch.matmul(img_feats, vt_xy).view(B, C, X, Y)
+        return occ_feats_yz, occ_feats_xz, occ_feats_xy
