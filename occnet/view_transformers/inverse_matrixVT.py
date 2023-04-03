@@ -54,7 +54,7 @@ class InverseMatrixVT(BaseModule):
         batch_vt = multi_apply(self._get_vt_matrix_single,
                                img_feats,
                                img_metas)
-        return torch.stack(batch_vt[0])
+        return torch.stack(batch_vt[0]), torch.stack(batch_vt[1]), torch.stack(batch_vt[3])
 
     @force_fp32(apply_to=('img_feat', 'img_meta'))
     def _get_vt_matrix_single(self, img_feat, img_meta):
@@ -98,7 +98,6 @@ class InverseMatrixVT(BaseModule):
         ref_points_flatten = ref_points[..., 2] * H * W + \
                              ref_points[..., 1] * W + ref_points[..., 0]
         # factorize 3D
-        # TODO: not check yet!
         ref_points_flatten = ref_points_flatten.reshape(X, Y, Z, -1)
         ref_points_x = ref_points_flatten.permute(1, 2, 3, 0).reshape(Y * Z, -1)
         ref_points_y = ref_points_flatten.permute(0, 2, 3, 1).reshape(X * Z, -1)
