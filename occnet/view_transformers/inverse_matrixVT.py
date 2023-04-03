@@ -10,11 +10,8 @@ from occnet.utils import (multi_apply, resize, BilinearDeconvolution)
 @VIEW_TRANSFORMERS.register_module()
 class InverseMatrixVT(BaseModule):
     def __init__(self,
-                 in_channels,
-                 channels,
                  feature_strides,
-                 norm_cfg=None,
-                 act_cfg=dict(type='ReLU'),
+                 in_index=-1,
                  grid_size=[100, 100, 8],
                  x_bound=[-51.2, 51.2],
                  y_bound=[-51.2, 51.2],
@@ -26,31 +23,12 @@ class InverseMatrixVT(BaseModule):
         self.y_bound = y_bound
         self.z_bound = z_bound
         self.sampling_rate = sampling_rate
-        assert isinstance(feature_strides, list)
-        assert isinstance(in_channels, list)
-        assert len(in_channels) == len(feature_strides)
-        self.feature_strides = feature_strides
-        self.ds_rate = min(feature_strides)
+        self.in_index = in_index
+        if isinstance(feature_strides, list):
+            self.ds_rate = feature_strides[in_index]
+        else:
+            self.ds_rate = feature_strides
         self.coord = self._create_gridmap_anchor()
-        # img feats fusion
-        self.scale_heads = nn.ModuleList()
-        for i in range(len(feature_strides)):
-            head_length = max(
-                1,
-                int(np.log2(feature_strides[i]) - np.log2(feature_strides[0])))
-            scale_head = []
-            for k in range(head_length):
-                scale_head.append(
-                    ConvModule(
-                        in_channels[i] if k == 0 else channels,
-                        channels,
-                        3,
-                        padding=1,
-                        norm_cfg=norm_cfg,
-                        act_cfg=act_cfg))
-                if feature_strides[i] != feature_strides[0]:
-                    scale_head.append(BilinearDeconvolution(channels))
-            self.scale_heads.append(nn.Sequential(*scale_head))
 
     def _create_gridmap_anchor(self):
         # create a gridmap anchor with shape of (X, Y, Z, sampling_rate**3, 3)
@@ -109,7 +87,7 @@ class InverseMatrixVT(BaseModule):
         ref_points = torch.div(ref_points[..., :2],
                                self.ds_rate,
                                rounding_mode='floor').to(torch.long)
-        cam_index = torch.arange(Nc, device=lidar2img.device)\
+        cam_index = torch.arange(Nc, device=lidar2img.device) \
             .unsqueeze(0).unsqueeze(2) \
             .repeat(X * Y * Z, 1, S).unsqueeze(-1)
         # ref_points: (X * Y * Z, Nc * S, 3), 3: (W, H, Nc)
@@ -120,7 +98,7 @@ class InverseMatrixVT(BaseModule):
         ref_points_flatten = ref_points[..., 2] * H * W + \
                              ref_points[..., 1] * W + ref_points[..., 0]
         # factorize 3D
-        #TODO: not check yet!
+        # TODO: not check yet!
         ref_points_flatten = ref_points_flatten.reshape(X, Y, Z, -1)
         ref_points_x = ref_points_flatten.permute(1, 2, 3, 0).view(Y * Z, -1)
         ref_points_y = ref_points_flatten.permute(0, 2, 3, 1).view(X * Z, -1)
@@ -148,30 +126,14 @@ class InverseMatrixVT(BaseModule):
 
         return vt_x.unsqueeze(0), vt_y.unsqueeze(0), vt_z.unsqueeze(0)
 
-    def fuse_img_feats(self, img_feats, img_metas):
-        # img_feats: [(B * N, C, H, W), ...]
-        output = self.scale_heads[0](img_feats[0])
-        for i in range(1, len(self.feature_strides)):
-            # non inplace
-            tmp = self.scale_heads[i](img_feats[i])
-            if tmp.shape != output.shape:
-                tmp = resize(tmp,
-                             size=output.shape[2:],
-                             mode='nearest',
-                             align_corners=None)
-            output = output + tmp
-        # reshape to B, N, C, H, W
-        B = len(img_metas)
-        BN, C, H, W = output.shape
-        output = output.view(B, -1, C, H, W)
-        return output
-
     def forward(self, img_feats, img_metas):
-        img_feats = self.fuse_img_feats(img_feats, img_metas)
-        vt_matrix = self.get_vt_matrix(img_feats, img_metas)
-        # reshape img_feats
+        img_feats = img_feats[self.in_index]
+        vt_x, vt_y, vt_z = self.get_vt_matrix(img_feats, img_metas)
+        # flatten img_feats
         B, N, C, H, W = img_feats.shape
         img_feats = img_feats.permute(0, 2, 1, 3, 4).reshape(B, C, -1)
-        # B, C, X * Y * Z
-        occ_feats = torch.matmul(img_feats, vt_matrix)
-        return occ_feats
+        # B, C, (Y * Z, X * Z, X * Y)
+        occ_feats_x = torch.matmul(img_feats, vt_x)
+        occ_feats_y = torch.matmul(img_feats, vt_y)
+        occ_feats_z = torch.matmul(img_feats, vt_z)
+        return occ_feats_x, occ_feats_y, occ_feats_z

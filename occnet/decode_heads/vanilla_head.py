@@ -4,6 +4,7 @@ from mmcv.cnn import ConvModule
 from mmcv.runner import BaseModule, force_fp32
 from occnet import HEADS
 
+
 @HEADS.register_module()
 class VanillaHead(BaseModule):
     def __init__(self,
@@ -51,7 +52,7 @@ class VanillaHead(BaseModule):
     #         cls_score, gt_label, reduction='mean')
     #     return loss
 
-    def forward(self, occ_feats):
+    def forward(self, occ_feats, **kwargs):
         # occ_feats (NCXY, NCXZ, NCYZ)
         xy_feat, xz_feat, yz_feat = occ_feats
         B, C, X, Y, Z = *xy_feat.size(), xz_feat.size(3)
@@ -67,5 +68,3 @@ class VanillaHead(BaseModule):
         logtis = self.classifier(xyz_feat)  # (B, XYZ, C)
 
         return logtis
-
-    

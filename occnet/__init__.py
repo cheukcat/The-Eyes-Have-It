@@ -7,4 +7,4 @@ from .view_transformers import *
 from .utils import *
 
 __all__ = ['build_loss', 'build_model', 'build_dataloader',
-           'build_view_transformer', 'VIEW_TRANSFORMERS']
+           'build_view_transformer', 'VIEW_TRANSFORMERS', 'HEADS']
