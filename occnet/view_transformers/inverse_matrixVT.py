@@ -98,7 +98,6 @@ class InverseMatrixVT(BaseModule):
         ref_points_flatten = ref_points[..., 2] * H * W + \
                              ref_points[..., 1] * W + ref_points[..., 0]
         # factorize 3D
-        # TODO: not check yet!
         ref_points_flatten = ref_points_flatten.reshape(X, Y, Z, -1)
         ref_points_x = ref_points_flatten.permute(1, 2, 3, 0).reshape(Y * Z, -1)
         ref_points_y = ref_points_flatten.permute(0, 2, 3, 1).reshape(X * Z, -1)
