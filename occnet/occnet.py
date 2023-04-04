@@ -12,7 +12,8 @@ class VanillaOccupancy(BaseModule):
                  img_neck=None,
                  view_transformer=None,
                  occ_head=None,
-                 pretrained=None):
+                 pretrained=None,
+                 **kwargs):
         super().__init__()
         self.fp16_enabled = False
         if pretrained:
