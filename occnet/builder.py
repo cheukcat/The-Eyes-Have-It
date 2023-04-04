@@ -10,7 +10,6 @@ from mmcv.utils import Registry
 
 MODELS = Registry('models', parent=MMCV_MODELS)
 VIEW_TRANSFORMERS = MODELS
-HEADS = MODELS
 
 
 def build_view_transformer(vt_config):

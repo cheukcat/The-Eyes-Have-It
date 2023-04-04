@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from mmcv.cnn import ConvModule
 from mmcv.runner import BaseModule, force_fp32
-from occnet import HEADS
+from mmseg.models.builder import HEADS
 
 
 @HEADS.register_module()
