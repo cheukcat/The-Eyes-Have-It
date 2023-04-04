@@ -21,7 +21,7 @@ nbr_class = 18
 # model settings
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
-    type='EncoderDecoder',
+    type='VanillaOccupancy',
     img_backbone=dict(
         _delete_=True,
         type='RegNet',
