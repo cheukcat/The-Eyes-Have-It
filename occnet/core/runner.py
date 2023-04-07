@@ -188,7 +188,7 @@ class Runner:
                 print(self.model.load_state_dict(state_dict, strict=False))
 
         # run
-        self.eval_epoch(epoch)
+        # self.eval_epoch(epoch)
         while epoch < max_epoch:
             self.train_epoch(epoch)
             self.eval_epoch(epoch)
