@@ -27,10 +27,10 @@ class MeanIoU:
         targets = targets[targets != self.ignore_label]
 
         for i, c in enumerate(self.class_indices):
-            self.total_seen[i] += torch.sum(torch.isclose(targets, c)).item()
-            self.total_correct[i] += torch.sum(torch.isclose(targets, c) &
-                                               torch.isclose(outputs, c)).item()
-            self.total_positive[i] += torch.sum(torch.isclose(outputs, c)).item()
+            self.total_seen[i] += torch.sum(targets == c).item()
+            self.total_correct[i] += torch.sum((targets == c) &
+                                               (outputs == c)).item()
+            self.total_positive[i] += torch.sum(outputs == c).item()
 
     def after_epoch(self):
         dist.all_reduce(self.total_seen)
