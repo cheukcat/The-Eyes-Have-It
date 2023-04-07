@@ -1,4 +1,5 @@
 from mmcv.runner import auto_fp16, BaseModule
+from mmdet.models import build_backbone
 from mmseg.models import SEGMENTORS, builder
 from occnet import build_view_transformer
 import warnings
@@ -20,7 +21,11 @@ class VanillaOccupancy(BaseModule):
             warnings.warn('DeprecationWarning: pretrained is deprecated, '
                           'please use "init_cfg" instead')
             img_backbone.pretrained = pretrained
-        self.img_backbone = builder.build_backbone(img_backbone)
+        try:
+            self.img_backbone = build_backbone(img_backbone)
+        except:
+            warnings.warn('Backbone is not found in mmdet, try to load it in mmseg')
+            self.img_backbone = builder.build_backbone(img_backbone)
         if img_neck is not None:
             self.img_neck = builder.build_neck(img_neck)
         self.view_transformer = build_view_transformer(view_transformer)
