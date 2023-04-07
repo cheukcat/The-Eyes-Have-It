@@ -19,11 +19,12 @@ num_points = [8, 64, 64]
 nbr_class = 18
 
 # model settings
+find_unused_parameters=True
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='VanillaOccupancy',
     img_backbone=dict(
-        _delete_=True,
+        # _delete_=True,
         type='RegNet',
         arch='regnetx_3.2gf',
         out_indices=(0, 1, 2, 3),
@@ -34,17 +35,15 @@ model = dict(
         init_cfg=dict(
             type='Pretrained', checkpoint='open-mmlab://regnetx_3.2gf')),
     img_neck=dict(
-        type='BiFPN',
+        type='FPN',
         in_channels=[96, 192, 432, 1008],
         out_channels=256,
-        strides=[8, 16, 32, 64],
-        num_outs=5,
-        stack=2,
+        num_outs=4,
         norm_cfg=norm_cfg),
     view_transformer=dict(
         type='InverseMatrixVT',
-        feature_strides=[4, 8, 16, 32, 64],
-        in_index=1,
+        feature_strides=[4, 8, 16, 32],
+        in_index=2,
         grid_size=grid_size,
         x_bound=[-51.2, 51.2],
         y_bound=[-51.2, 51.2],

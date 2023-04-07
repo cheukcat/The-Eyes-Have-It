@@ -67,11 +67,11 @@ def main(local_rank, args):
 
     # configure logger
     if dist.get_rank() == 0:
-        os.makedirs(args.work_dir, exist_ok=True)
-        cfg.dump(osp.join(args.work_dir, osp.basename(args.py_config)))
+        os.makedirs(cfg.work_dir, exist_ok=True)
+        cfg.dump(osp.join(cfg.work_dir, osp.basename(args.py_config)))
 
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
-    log_file = osp.join(args.work_dir, f'{timestamp}.log')
+    log_file = osp.join(cfg.work_dir, f'{timestamp}.log')
     logger = get_root_logger(log_file=log_file, log_level='INFO')
     logger.info(f'Config:\n{cfg.pretty_text}')
 
@@ -139,8 +139,8 @@ def main(local_rank, args):
 if __name__ == '__main__':
     # Training settings
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--py-config', default='config/vanilla_occ/vanilla_occ_r50_fpn_1x_nus-mini.py')
-    parser.add_argument('--work-dir', type=str, default='./work_dirs/vanilla_occ_r50_fpn_1x_nus-mini.py')
+    parser.add_argument('--py-config', default='config/vanilla_occ/vanilla_occ_r50_fpn_1x_nus-trainval.py')
+    parser.add_argument('--work-dir', type=str, default='work_dirs/occnet/')
     parser.add_argument('--resume-from', type=str, default='')
 
     args = parser.parse_args()

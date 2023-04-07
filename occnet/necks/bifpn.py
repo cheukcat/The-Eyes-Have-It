@@ -98,8 +98,9 @@ class WeightedInputConv(nn.Module):
         w = F.relu(self.weight)
         w /= (w.sum() + self.eps)
         x = 0
+        _, _, H, W = inputs[0].shape
         for i in range(self.num_ins):
-            x += w[i] * inputs[i]
+            x += w[i] * inputs[i][:, :, :H, :W]
         # import pdb; pdb.set_trace()
         output = self.conv_op(self._swish(x))
         return output
