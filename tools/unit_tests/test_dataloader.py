@@ -6,7 +6,7 @@ CUR_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(CUR_DIR))
 from occnet import build_dataloader
 
-cfg = Config.fromfile('configs/vanilla_occ_r50_fpn_1x_nus-mini.py')
+cfg = Config.fromfile('configs/vanilla_occ_r50_fpn_1x_nus-trainval.py')
 dataset_config = cfg.dataset_params
 print('dataset_config: ', dataset_config)
 train_dataloader_config = cfg.train_data_loader
