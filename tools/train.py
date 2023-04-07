@@ -34,7 +34,14 @@ def main(local_rank, args):
 
     # load config
     cfg = Config.fromfile(args.py_config)
-    cfg.work_dir = args.work_dir
+    # work_dir is determined in this priority: CLI > segment in file > filename
+    if args.work_dir is not None:
+        # update configs according to CLI args if args.work_dir is not None
+        cfg.work_dir = args.work_dir
+    elif cfg.get('work_dir', None) is None:
+        # use config filename as default work_dir if cfg.work_dir is None
+        cfg.work_dir = osp.join('./work_dirs', args.timestamp + '_' +
+                                osp.splitext(osp.basename(args.py_config))[0])
 
     dataset_config = cfg.dataset_params
     ignore_label = dataset_config['ignore_label']
@@ -140,7 +147,8 @@ if __name__ == '__main__':
     # Training settings
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--py-config', default='config/vanilla_occ/vanilla_occ_r50_fpn_1x_nus-trainval.py')
-    parser.add_argument('--work-dir', type=str, default='./work_dirs/vanilla_occ_r50_fpn_1x_nus-trainval.py')
+    parser.add_argument('--timestamp', type=str, default=None)
+    parser.add_argument('--work-dir', type=str, default=None)
     parser.add_argument('--resume-from', type=str, default='')
 
     args = parser.parse_args()
