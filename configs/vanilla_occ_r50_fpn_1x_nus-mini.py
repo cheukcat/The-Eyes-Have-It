@@ -23,7 +23,7 @@ norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='VanillaOccupancy',
     img_backbone=dict(
-        _delete_=True,
+        # _delete_=True,
         type='RegNet',
         arch='regnetx_3.2gf',
         out_indices=(0, 1, 2, 3),

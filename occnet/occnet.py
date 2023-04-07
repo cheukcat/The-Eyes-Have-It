@@ -46,10 +46,10 @@ class VanillaOccupancy(BaseModule):
             img_feats_reshaped.append(img_feat.view(B, -1, C, H, W))
         return img_feats_reshaped
 
-    @auto_fp16(apply_to=('img', 'points'))
-    def forward(self, img, img_metas=None, points=None, **kwargs):
+    @auto_fp16(apply_to=('img'))
+    def forward(self, img, img_metas=None, **kwargs):
         """Forward training function."""
         img_feats = self.extract_img_feat(img=img)
-        occ_feats = self.view_transformer(img_feats, img_metas, **kwargs)
-        occ_outs = self.occ_head(occ_feats, points, **kwargs)
+        occ_feats = self.view_transformer(img_feats, img_metas)
+        occ_outs = self.occ_head(occ_feats, **kwargs)
         return occ_outs
