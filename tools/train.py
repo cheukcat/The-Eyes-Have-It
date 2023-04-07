@@ -140,7 +140,6 @@ if __name__ == '__main__':
     # Training settings
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--py-config', default='config/vanilla_occ/vanilla_occ_r50_fpn_1x_nus-trainval.py')
-    parser.add_argument('--timestamp', type=str, default=None)
     parser.add_argument('--work-dir', type=str, default='work_dirs/occnet/')
     parser.add_argument('--resume-from', type=str, default='')
 
