@@ -74,11 +74,11 @@ def main(local_rank, args):
 
     # configure logger
     if dist.get_rank() == 0:
-        os.makedirs(args.work_dir, exist_ok=True)
-        cfg.dump(osp.join(args.work_dir, osp.basename(args.py_config)))
+        os.makedirs(cfg.work_dir, exist_ok=True)
+        cfg.dump(osp.join(cfg.work_dir, osp.basename(args.py_config)))
 
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
-    log_file = osp.join(args.work_dir, f'{timestamp}.log')
+    log_file = osp.join(cfg.work_dir, f'{timestamp}.log')
     logger = get_root_logger(log_file=log_file, log_level='INFO')
     logger.info(f'Config:\n{cfg.pretty_text}')
 
