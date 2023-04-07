@@ -48,6 +48,7 @@ class InverseMatrixVT(BaseModule):
                                                  self.grid_size[2], -1, 4)
         return new_coord
 
+    @torch.no_grad()
     def get_vt_matrix(self, img_feats, img_metas):
         batch_vt = multi_apply(self._get_vt_matrix_single,
                                img_feats,
