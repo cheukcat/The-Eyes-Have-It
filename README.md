@@ -1,5 +1,7 @@
 # The Eyes Have It
 An intuitive approach for 3D Occupancy Detection
+## Related Projects
+Many thanks to [TPVFormer](https://github.com/wzzheng/TPVFormer).
 ## Installation
 **1.** Create conda environment with python version 3.8
 
