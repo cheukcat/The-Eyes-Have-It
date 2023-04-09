@@ -7,6 +7,7 @@ print(str(Path(__file__).parents[2]))
 
 import numpy as np
 import shutil
+import pickle
 from tools.visualization.vis_dataset import build_vis_dataset
 from tools.visualization.vis_utils import draw
 
@@ -30,10 +31,15 @@ dataloader_config = dict(
     shuffle = True,
     num_workers = 0,    # debug use
 )
-
+# grid_size = [200, 200, 16]
+grid_size = [100, 100, 8]   # output is downsampled
 # build visualization dataset
 vis_dataset = build_vis_dataset(dataset_config,
-                                dataloader_config)
+                                dataloader_config,
+                                grid_size)
+# prediction
+results = '/works/cbh/The-Eyes-Have-It/work_dirs/occ_val/results.pkl'
+pred_list = pickle.load(open(results, 'rb'))
 
 # visualization index
 index = 0
@@ -41,7 +47,6 @@ index = 0
 batch_data, filelist, scene_meta, timestamp = vis_dataset[index]
 imgs, img_metas, vox_label, grid, pt_label = batch_data
 
-grid_size = [200, 200, 16]
 imgs = np.stack([imgs]) # not used for now
 grid = np.stack([grid])
 
@@ -54,23 +59,21 @@ save_path = 'vis_output'
 frame_dir = os.path.join(save_path, str(index))
 os.makedirs(frame_dir, exist_ok=True)
 
-for filename in filelist:   # not used for now            
+for filename in filelist:   # not used for now
     shutil.copy(filename, os.path.join(frame_dir, os.path.basename(filename)))
 
-# create prediction placeholders
-voxels_shape = [256, 256, 32]
-predict_vox = np.ones(voxels_shape)
-predict_pts = None
+predict_vox = pred_list[index][0]
+predict_pts = None  # not used for now
 
-draw(predict_vox, 
+draw(predict_vox,
      predict_pts,
-     voxel_origin, 
-     resolution, 
-     grid.squeeze(0), 
+     voxel_origin,
+     resolution,
+     grid.squeeze(0),
      pt_label.squeeze(-1),
      frame_dir,
      img_metas['cam_positions'],
      img_metas['focal_positions'],
      timestamp=timestamp,
      offscreen=True,    # save the fig!
-     mode=2)
+     mode=0)
