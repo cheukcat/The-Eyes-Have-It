@@ -18,6 +18,8 @@ from occnet.dataloader.piplines import PadMultiViewImage, \
     NormalizeMultiviewImage, \
     PhotoMetricDistortionMultiViewImage
 
+from occnet.dataloader import ImagePoint_NuScenes,  \
+                              DatasetWrapper_NuScenes
 
 img_norm_cfg = dict(
     mean=[103.530, 116.280, 123.675], std=[1.0, 1.0, 1.0], to_rgb=False)
@@ -307,3 +309,30 @@ def build_vis_dataset(dataset_config,
     )
 
     return dataset
+
+def build_val_dataset(dataset_config,
+                      dataloader_config,
+                      grid_size=[200, 200, 16],
+                      ):
+    data_path = dataloader_config["data_path"]
+    val_imageset = dataloader_config["imageset"]
+    label_mapping = dataset_config["label_mapping"]
+    version = dataset_config['version']
+
+    from nuscenes import NuScenes
+    nusc = NuScenes(version=version, dataroot=data_path, verbose=True)
+
+    val_dataset = ImagePoint_NuScenes(data_path, imageset=val_imageset,
+                                      label_mapping=label_mapping, nusc=nusc)
+
+    val_dataset = DatasetWrapper_NuScenes(
+        val_dataset,
+        grid_size=grid_size,
+        fixed_volume_space=dataset_config['fixed_volume_space'],
+        max_volume_space=dataset_config['max_volume_space'],
+        min_volume_space=dataset_config['min_volume_space'],
+        fill_label=dataset_config["fill_label"],
+        phase='val',
+    )
+
+    return val_dataset
