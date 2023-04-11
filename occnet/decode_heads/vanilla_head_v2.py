@@ -32,13 +32,13 @@ class VanillaHeadv2(BaseModule):
         self.yz_conv = self.build_3x3_conv_block(scale)
 
         # xy, xz, yz weight layers
-        self.xy_weight = ConvModule(in_channels, 1, 1,
+        self.xy_weight = ConvModule(channels, 1, 1,
                                     norm_cfg=self.norm_cfg,
                                     act_cfg=None)
-        self.xz_weight = ConvModule(in_channels, 1, 1,
+        self.xz_weight = ConvModule(channels, 1, 1,
                                     norm_cfg=self.norm_cfg,
                                     act_cfg=None)
-        self.yz_weight = ConvModule(in_channels, 1, 1,
+        self.yz_weight = ConvModule(channels, 1, 1,
                                     norm_cfg=self.norm_cfg,
                                     act_cfg=None)
         
@@ -84,7 +84,6 @@ class VanillaHeadv2(BaseModule):
     def forward(self, occ_feats, **kwargs):
         # occ_feats (NCXY, NCXZ, NCYZ)
         yz_feat, xz_feat, xy_feat = occ_feats
-        B, C, X, Y, Z = *xy_feat.size(), xz_feat.size(3)
         
         # extract features
         xy_feat = self.xy_conv(xy_feat)
@@ -105,8 +104,17 @@ class VanillaHeadv2(BaseModule):
                    self.attention_fusion(xy_feat, xy_weight, yz_feat, yz_weight)
 
         # reshape and fc
+        B, C, X, Y, Z = xyz_feat.size()
         xyz_feat = self.fc(xyz_feat.view(B, C, -1).transpose(1, 2))
         logtis = self.classifier(xyz_feat)  # (B, XYZ, C)
         logtis = logtis.permute(0, 2, 1).reshape(B, -1, X, Y, Z)
 
         return logtis
+
+if __name__ == '__main__':
+    model = VanillaHeadv2(32, 64, 19)
+    xy_feat = torch.randn(2, 32, 64, 32)
+    xz_feat = torch.randn(2, 32, 64, 8)
+    yz_feat = torch.randn(2, 32, 32, 8)
+    logtis = model((yz_feat, xz_feat, xy_feat))
+    print(logtis.shape)
