@@ -3,6 +3,7 @@ import torch.nn as nn
 from mmcv.cnn import ConvModule
 from mmcv.runner import BaseModule, force_fp32
 from mmseg.models.builder import HEADS
+from occnet.utils import Upsample
 
 
 @HEADS.register_module()
@@ -11,6 +12,7 @@ class VanillaHead(BaseModule):
                  in_channels,
                  channels,
                  num_classes,
+                 scale=1,
                  norm_cfg=None,
                  act_cfg=dict(type='ReLU')):
         super().__init__()
@@ -21,9 +23,9 @@ class VanillaHead(BaseModule):
         self.act_cfg = act_cfg
 
         # xy, xz, yz conv layers
-        self.xy_conv = self.build_3x3_conv_block(2)
-        self.xz_conv = self.build_3x3_conv_block(2)
-        self.yz_conv = self.build_3x3_conv_block(2)
+        self.xy_conv = self.build_3x3_conv_block(scale)
+        self.xz_conv = self.build_3x3_conv_block(scale)
+        self.yz_conv = self.build_3x3_conv_block(scale)
         # xyz fc layers
         self.fc = nn.Sequential(
             nn.Linear(self.channels, self.channels),
@@ -35,6 +37,12 @@ class VanillaHead(BaseModule):
     def build_3x3_conv_block(self, layers):
         conv_list = []
         for i in range(layers):
+            if i != 0:
+                conv_list.append(
+                    Upsample(
+                        scale_factor=2,
+                        mode='bilinear',
+                        align_corners=False))
             conv_list.append(
                 ConvModule(
                     self.in_channels if i == 0 else self.channels,
@@ -55,11 +63,11 @@ class VanillaHead(BaseModule):
     def forward(self, occ_feats, **kwargs):
         # occ_feats (NCXY, NCXZ, NCYZ)
         yz_feat, xz_feat, xy_feat = occ_feats
-        B, C, X, Y, Z = *xy_feat.size(), xz_feat.size(3)
         # extract features
         xy_feat = self.xy_conv(xy_feat)
         xz_feat = self.xz_conv(xz_feat)
         yz_feat = self.yz_conv(yz_feat)
+        B, C, X, Y, Z = *xy_feat.size(), xz_feat.size(3)
         # multiply to expand, and add up
         xyz_feat = xy_feat.view(B, C, X, Y, 1) * xz_feat.view(B, C, X, 1, Z) + \
                    xy_feat.view(B, C, X, Y, 1) * yz_feat.view(B, C, 1, Y, Z)
