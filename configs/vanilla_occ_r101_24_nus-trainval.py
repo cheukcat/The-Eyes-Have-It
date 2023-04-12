@@ -22,7 +22,6 @@ nbr_class = 18
 
 # model settings
 find_unused_parameters=True
-norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='VanillaOccupancy',
     img_backbone=dict(
@@ -46,8 +45,8 @@ model = dict(
         relu_before_extra_convs=True),
     view_transformer=dict(
         type='InverseMatrixVT',
-        feature_strides=[4, 8, 16, 32],
-        in_index=2,
+        feature_strides=[8, 16, 32, 64],
+        in_index=1,
         grid_size=grid_size_vt,
         x_bound=[-51.2, 51.2],
         y_bound=[-51.2, 51.2],
@@ -57,6 +56,5 @@ model = dict(
         in_channels=_dim_,
         channels=_dim_,
         num_classes=nbr_class,
-        scale=scale,
-        norm_cfg=norm_cfg)
+        scale=scale)
 )
