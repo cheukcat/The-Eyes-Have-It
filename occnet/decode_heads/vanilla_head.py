@@ -55,7 +55,8 @@ class VanillaHead(BaseModule):
     def forward(self, occ_feats, **kwargs):
         # occ_feats (NCXY, NCXZ, NCYZ)
         yz_feat, xz_feat, xy_feat = occ_feats
-        B, C, X, Y, Z = *xy_feat.size(), xz_feat.size(3)
+        B, _, X, Y, Z = *xy_feat.size(), xz_feat.size(3)
+        C = self.channels
         # extract features
         xy_feat = self.xy_conv(xy_feat)
         xz_feat = self.xz_conv(xz_feat)
