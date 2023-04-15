@@ -36,6 +36,14 @@ class VanillaHead(BaseModule):
 
     def build_3x3_conv_block(self, layers):
         conv_list = []
+        conv_list.append(
+            ConvModule(
+                self.in_channels,
+                self.channels,
+                3,
+                padding=1,
+                norm_cfg=self.norm_cfg,
+                act_cfg=self.act_cfg))
         for i in range(layers):
             if i != 0:
                 conv_list.append(
@@ -45,7 +53,7 @@ class VanillaHead(BaseModule):
                         align_corners=False))
             conv_list.append(
                 ConvModule(
-                    self.in_channels if i == 0 else self.channels,
+                    self.channels,
                     self.channels,
                     3,
                     padding=1,
@@ -69,8 +77,10 @@ class VanillaHead(BaseModule):
         yz_feat = self.yz_conv(yz_feat)
         B, C, X, Y, Z = *xy_feat.size(), xz_feat.size(3)
         # multiply to expand, and add up
-        xyz_feat = xy_feat.view(B, C, X, Y, 1) * xz_feat.view(B, C, X, 1, Z) + \
-                   xy_feat.view(B, C, X, Y, 1) * yz_feat.view(B, C, 1, Y, Z)
+        xyz_feat = xy_feat.view(B, C, X, Y, 1) * torch.sigmoid(xz_feat).view(B, C, X, 1, Z) + \
+                   xy_feat.view(B, C, X, Y, 1) * torch.sigmoid(yz_feat).view(B, C, 1, Y, Z) + \
+                   xz_feat.view(B, C, X, 1, Z) * torch.sigmoid(xy_feat).view(B, C, X, Y, 1) + \
+                   yz_feat.view(B, C, 1, Y, Z) * torch.sigmoid(xy_feat).view(B, C, X, Y, 1)
         # reshape and fc
         xyz_feat = self.fc(xyz_feat.view(B, C, -1).transpose(1, 2))
         logtis = self.classifier(xyz_feat)  # (B, XYZ, C)
