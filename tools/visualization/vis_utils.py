@@ -9,11 +9,11 @@ def get_grid_coords(dims, resolution):
     :return coords_grid: is the center coords of voxels in the grid
     """
 
-    g_xx = np.arange(0, dims[0]) # [0, 1, ..., 256]
+    g_xx = np.arange(0, dims[0])  # [0, 1, ..., 256]
     # g_xx = g_xx[::-1]
-    g_yy = np.arange(0, dims[1]) # [0, 1, ..., 256]
+    g_yy = np.arange(0, dims[1])  # [0, 1, ..., 256]
     # g_yy = g_yy[::-1]
-    g_zz = np.arange(0, dims[2]) # [0, 1, ..., 32]
+    g_zz = np.arange(0, dims[2])  # [0, 1, ..., 32]
 
     # Obtaining the grid with coords...
     xx, yy, zz = np.meshgrid(g_xx, g_yy, g_zz)
@@ -25,39 +25,41 @@ def get_grid_coords(dims, resolution):
 
     return coords_grid
 
+
 def get_color_palette():
     return np.array(
         [
-            [255, 120,  50, 255],       # barrier              orange
-            [255, 192, 203, 255],       # bicycle              pink
-            [255, 255,   0, 255],       # bus                  yellow
-            [  0, 150, 245, 255],       # car                  blue
-            [  0, 255, 255, 255],       # construction_vehicle cyan
-            [255, 127,   0, 255],       # motorcycle           dark orange
-            [255,   0,   0, 255],       # pedestrian           red
-            [255, 240, 150, 255],       # traffic_cone         light yellow
-            [135,  60,   0, 255],       # trailer              brown
-            [160,  32, 240, 255],       # truck                purple                
-            [255,   0, 255, 255],       # driveable_surface    dark pink
+            [255, 120, 50, 255],  # barrier              orange
+            [255, 192, 203, 255],  # bicycle              pink
+            [255, 255, 0, 255],  # bus                  yellow
+            [0, 150, 245, 255],  # car                  blue
+            [0, 255, 255, 255],  # construction_vehicle cyan
+            [255, 127, 0, 255],  # motorcycle           dark orange
+            [255, 0, 0, 255],  # pedestrian           red
+            [255, 240, 150, 255],  # traffic_cone         light yellow
+            [135, 60, 0, 255],  # trailer              brown
+            [160, 32, 240, 255],  # truck                purple
+            [255, 0, 255, 255],  # driveable_surface    dark pink
             # [175,   0,  75, 255],       # other_flat           dark red
             [139, 137, 137, 255],
-            [ 75,   0,  75, 255],       # sidewalk             dard purple
-            [150, 240,  80, 255],       # terrain              light green          
-            [230, 230, 250, 255],       # manmade              white
-            [  0, 175,   0, 255],       # vegetation           green
-            [  0, 255, 127, 255],       # ego car              dark cyan
-            [255,  99,  71, 255],       # ego car
-            [  0, 191, 255, 255]        # ego car
+            [75, 0, 75, 255],  # sidewalk             dard purple
+            [150, 240, 80, 255],  # terrain              light green
+            [230, 230, 250, 255],  # manmade              white
+            [0, 175, 0, 255],  # vegetation           green
+            [0, 255, 127, 255],  # ego car              dark cyan
+            [255, 99, 71, 255],  # ego car
+            [0, 191, 255, 255]  # ego car
         ]
     ).astype(np.uint8)
+
 
 def draw_simple_car(w, h, z, grid_coords):
     """ Draw a simple car at the middle
     """
     car_vox_range = np.array([
-        [w//2 - 2 - 4, w//2 - 2 + 4],
-        [h//2 - 2 - 4, h//2 - 2 + 4],
-        [z//2 - 2 - 3, z//2 - 2 + 3]
+        [w // 2 - 2 - 4, w // 2 - 2 + 4],
+        [h // 2 - 2 - 4, h // 2 - 2 + 4],
+        [z // 2 - 2 - 3, z // 2 - 2 + 3]
     ], dtype=np.int)
     car_x = np.arange(car_vox_range[0, 0], car_vox_range[0, 1])
     car_y = np.arange(car_vox_range[1, 0], car_vox_range[1, 1])

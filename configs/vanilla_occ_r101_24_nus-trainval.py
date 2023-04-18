@@ -21,7 +21,7 @@ num_points = [8, 64, 64]
 nbr_class = 18
 
 # model settings
-find_unused_parameters=True
+find_unused_parameters = True
 model = dict(
     type='VanillaOccupancy',
     img_backbone=dict(
@@ -54,7 +54,7 @@ model = dict(
     occ_head=dict(
         type='VanillaHead',
         in_channels=_dim_,
-        channels=_dim_//2,
+        channels=_dim_ // 2,
         num_classes=nbr_class,
         scale=scale)
 )

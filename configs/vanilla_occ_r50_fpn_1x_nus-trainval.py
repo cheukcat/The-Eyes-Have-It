@@ -18,7 +18,7 @@ num_points = [8, 64, 64]
 nbr_class = 18
 
 # model settings
-find_unused_parameters=True
+find_unused_parameters = True
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='VanillaOccupancy',
