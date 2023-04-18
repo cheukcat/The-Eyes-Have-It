@@ -6,7 +6,7 @@ import numpy as np
 import os.path as osp
 
 from torch.utils.tensorboard import SummaryWriter
-from occnet.utils import revise_ckpt, revise_ckpt_2
+from occnet.utils import revise_ckpt, revise_ckpt_2, draw_occ
 
 
 class Runner:
@@ -81,6 +81,7 @@ class Runner:
             self.global_iter += 1
             if i_iter % self.cfg.print_freq == 0 and self.rank == 0:
                 lr = self.optimizer.param_groups[0]['lr']
+                self.writer.add_scalar('train/lr', lr, self.global_iter)
                 self.logger.info(
                     '[TRAIN] Epoch %d Iter %5d/%d: Loss: %.3f (%.3f), grad_norm: %.1f, lr: %.7f, time: %.3f (%.3f)' % (
                         epoch, i_iter, len(self.train_dataloader),
@@ -105,8 +106,10 @@ class Runner:
             mmcv.symlink(save_file_name, dst_file)
 
     @torch.no_grad()
-    def eval_epoch(self, epoch):
+    def eval_epoch(self, epoch, out_dir=None):
         self.model.eval()
+        if out_dir is not None:
+            os.makedirs(out_dir, exist_ok=True)
         val_loss_list = []
         self.evaluator.reset()
         loss_func_ce, loss_func_lovasz = self.loss_func
@@ -139,6 +142,18 @@ class Runner:
             if i_iter_val % self.cfg.print_freq == 0 and self.rank == 0:
                 self.logger.info('[EVAL] Epoch %d Iter %5d: Loss: %.3f (%.3f)' % (
                     epoch, i_iter_val, loss.item(), np.mean(val_loss_list)))
+            # draw prediction
+            if out_dir is not None:
+                save_file = osp.join(out_dir, f'fig_{i_iter_val:04d}.png')
+                grid_size = self.cfg.grid_size
+                voxel_min = self.cfg.dataset_params['min_volume_space']
+                voxel_max = self.cfg.dataset_params['max_volume_space']
+                resolution = [(e - s) / l for e, s, l in zip(voxel_max, voxel_min, grid_size)]
+                draw_occ(output[0],
+                         voxel_min,
+                         resolution,
+                         save_file,
+                         offscreen=True)
 
         val_miou = self.evaluator.after_epoch()
         if self.best_val_miou < val_miou:

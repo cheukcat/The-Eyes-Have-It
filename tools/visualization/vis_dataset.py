@@ -1,30 +1,30 @@
-
 import sys
 from pathlib import Path
+
 # TODO: we haven't build the project yet! So add the project to the env path
 sys.path.append(str(Path(__file__).parents[2]))
 
 import os
-import numpy as np
-from torch.utils import data
 import yaml
 import pickle
-from mmcv.image.io import imread
-from copy import deepcopy
-
+import numpy as np
 import numba as nb
+from copy import deepcopy
 from torch.utils import data
+from mmcv.image.io import imread
+
 from occnet.dataloader.piplines import PadMultiViewImage, \
     NormalizeMultiviewImage, \
     PhotoMetricDistortionMultiViewImage
-
+from occnet.dataloader import ImagePoint_NuScenes, \
+    DatasetWrapper_NuScenes
 
 img_norm_cfg = dict(
     mean=[103.530, 116.280, 123.675], std=[1.0, 1.0, 1.0], to_rgb=False)
 
 
 class ImagePoint_NuScenes_vis(data.Dataset):
-    def __init__(self, data_path, imageset='train', 
+    def __init__(self, data_path, imageset='train',
                  scene_idx=None, scene_name=None,
                  label_mapping="nuscenes.yaml", nusc=None):
         self.return_ref = False
@@ -48,14 +48,15 @@ class ImagePoint_NuScenes_vis(data.Dataset):
             sweep_cams = []
             sweep_tss = []
             reverse_tab = {
-                'CAM_FRONT':0, 
-                'CAM_FRONT_RIGHT':1, 
-                'CAM_FRONT_LEFT':2, 
-                'CAM_BACK':3, 
-                'CAM_BACK_LEFT':4, 
-                'CAM_BACK_RIGHT':5
+                'CAM_FRONT': 0,
+                'CAM_FRONT_RIGHT': 1,
+                'CAM_FRONT_LEFT': 2,
+                'CAM_BACK': 3,
+                'CAM_BACK_LEFT': 4,
+                'CAM_BACK_RIGHT': 5
             }
-            for cam_type in ['CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_FRONT_LEFT', 'CAM_BACK', 'CAM_BACK_LEFT', 'CAM_BACK_RIGHT']:
+            for cam_type in ['CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_FRONT_LEFT', 'CAM_BACK', 'CAM_BACK_LEFT',
+                             'CAM_BACK_RIGHT']:
                 dir = os.path.join(data_path, 'sweeps', cam_type)
                 filenames = os.listdir(dir)
                 files = [os.path.join(dir, fn) for fn in filenames]
@@ -66,10 +67,10 @@ class ImagePoint_NuScenes_vis(data.Dataset):
             sweep_cams = np.array(sweep_cams)
             sweep_tss = np.array(sweep_tss)
 
-            for i in range(len(self.nusc_infos)-1):
+            for i in range(len(self.nusc_infos) - 1):
                 insert_items = []
                 start_ts = self.nusc_infos[i]['timestamp']
-                end_ts = self.nusc_infos[i+1]['timestamp']
+                end_ts = self.nusc_infos[i + 1]['timestamp']
                 temp_cams = []
                 for sweep_cam, sweep_ts in zip(sweep_cams, sweep_tss):
                     temp_cam = sweep_cam[[(ts < end_ts and ts > start_ts) for ts in sweep_ts]]
@@ -83,14 +84,15 @@ class ImagePoint_NuScenes_vis(data.Dataset):
                     temp_dict['timestamp'] = temp_cams[0][j].split('__')[-1].split('.')[0]
                     insert_items.append(temp_dict)
                 nusc_infos.extend(insert_items)
-        
+
         self.nusc_infos = nusc_infos
-        
+
         self.data_path = data_path
         self.lidarseg_path = data_path
         self.nusc = nusc
-        self.cam_names = ['CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_FRONT_LEFT', 'CAM_BACK', 'CAM_BACK_LEFT', 'CAM_BACK_RIGHT']
-        
+        self.cam_names = ['CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_FRONT_LEFT', 'CAM_BACK', 'CAM_BACK_LEFT',
+                          'CAM_BACK_RIGHT']
+
     def __len__(self):
         'Denotes the total number of samples'
         return len(self.nusc_infos)
@@ -109,12 +111,13 @@ class ImagePoint_NuScenes_vis(data.Dataset):
             imgs.append(
                 imread(filename, 'unchanged').astype(np.float32)
             )
-        
+
         lidar_sd_token = self.nusc.get('sample', info['token'])['data']['LIDAR_TOP']
-        lidarseg_labels_filename = os.path.join(self.lidarseg_path, self.nusc.get('lidarseg', lidar_sd_token)['filename'])
+        lidarseg_labels_filename = os.path.join(self.lidarseg_path,
+                                                self.nusc.get('lidarseg', lidar_sd_token)['filename'])
         points_label = np.fromfile(lidarseg_labels_filename, dtype=np.uint8).reshape([-1, 1])
         points_label = np.vectorize(self.learning_map.__getitem__)(points_label)
-        
+
         lidar_path = info['lidar_path']
         points = np.fromfile(lidar_path, dtype=np.float32, count=-1).reshape([-1, 5])
 
@@ -125,7 +128,6 @@ class ImagePoint_NuScenes_vis(data.Dataset):
         scene_meta = self.nusc.get('scene', scene_token)
         timestamp = info['timestamp']
         return data_tuple, imgs_info['img_filename'], scene_meta, timestamp
-    
 
     def get_data_info(self, info):
         """Get data info according to the given index.
@@ -167,7 +169,7 @@ class ImagePoint_NuScenes_vis(data.Dataset):
             # obtain lidar to image transformation matrix
             lidar2cam_r = np.linalg.inv(cam_info['sensor2lidar_rotation'])
             lidar2cam_t = cam_info[
-                'sensor2lidar_translation'] @ lidar2cam_r.T
+                              'sensor2lidar_translation'] @ lidar2cam_r.T
             lidar2cam_rt = np.eye(4)
             lidar2cam_rt[:3, :3] = lidar2cam_r.T
             lidar2cam_rt[3, :3] = -lidar2cam_t
@@ -191,15 +193,15 @@ class ImagePoint_NuScenes_vis(data.Dataset):
                 lidar2img=lidar2img_rts,
                 cam_intrinsic=cam_intrinsics,
                 lidar2cam=lidar2cam_rts,
-                cam_positions=cam_positions, # w, h, z, meters,
+                cam_positions=cam_positions,  # w, h, z, meters,
                 focal_positions=focal_positions
             ))
 
         return input_dict
-    
+
 
 class DatasetWrapper_NuScenes_vis(data.Dataset):
-    def __init__(self, in_dataset, grid_size, ignore_label=0, fixed_volume_space=False, 
+    def __init__(self, in_dataset, grid_size, ignore_label=0, fixed_volume_space=False,
                  max_volume_space=[50, np.pi, 3], min_volume_space=[0, -np.pi, -5], phase='train'):
         'Initialization'
         self.point_cloud_dataset = in_dataset
@@ -229,7 +231,7 @@ class DatasetWrapper_NuScenes_vis(data.Dataset):
     def __getitem__(self, index):
         data, filelist, scene_meta, timestamp = self.point_cloud_dataset[index]
         imgs, img_metas, xyz, labels = data
-        
+
         # deal with img augmentations
         imgs_dict = {'img': imgs}
         for t in self.transforms:
@@ -239,13 +241,13 @@ class DatasetWrapper_NuScenes_vis(data.Dataset):
         img_metas['img_shape'] = imgs_dict['img_shape']
 
         xyz_pol = xyz
-        
+
         assert self.fixed_volume_space
         max_bound = np.asarray(self.max_volume_space)  # 51.2 51.2 3
         min_bound = np.asarray(self.min_volume_space)  # -51.2 -51.2 -5
         # get grid index
         crop_range = max_bound - min_bound
-        cur_grid_size = self.grid_size                 # 200, 200, 16
+        cur_grid_size = self.grid_size  # 200, 200, 16
         intervals = crop_range / (cur_grid_size - 1)
 
         if (intervals == 0).any(): print("Zero interval!")
@@ -282,8 +284,7 @@ def nb_process_label(processed_label, sorted_label_voxel_pair):
 def build_vis_dataset(dataset_config,
                       dataloader_config,
                       grid_size=[200, 200, 16],
-                    ):
-
+                      ):
     data_path = dataloader_config["data_path"]
     imageset = dataloader_config["imageset"]
     label_mapping = dataset_config["label_mapping"]
@@ -293,8 +294,8 @@ def build_vis_dataset(dataset_config,
     nusc = NuScenes(version=version, dataroot=data_path, verbose=True)
 
     pt_dataset = ImagePoint_NuScenes_vis(
-            data_path, imageset=imageset,
-            label_mapping=label_mapping, nusc=nusc)
+        data_path, imageset=imageset,
+        label_mapping=label_mapping, nusc=nusc)
 
     dataset = DatasetWrapper_NuScenes_vis(
         pt_dataset,
@@ -307,3 +308,31 @@ def build_vis_dataset(dataset_config,
     )
 
     return dataset
+
+
+def build_val_dataset(dataset_config,
+                      dataloader_config,
+                      grid_size=[200, 200, 16],
+                      ):
+    data_path = dataloader_config["data_path"]
+    val_imageset = dataloader_config["imageset"]
+    label_mapping = dataset_config["label_mapping"]
+    version = dataset_config['version']
+
+    from nuscenes import NuScenes
+    nusc = NuScenes(version=version, dataroot=data_path, verbose=True)
+
+    val_dataset = ImagePoint_NuScenes(data_path, imageset=val_imageset,
+                                      label_mapping=label_mapping, nusc=nusc)
+
+    val_dataset = DatasetWrapper_NuScenes(
+        val_dataset,
+        grid_size=grid_size,
+        fixed_volume_space=dataset_config['fixed_volume_space'],
+        max_volume_space=dataset_config['max_volume_space'],
+        min_volume_space=dataset_config['min_volume_space'],
+        fill_label=dataset_config["fill_label"],
+        phase='val',
+    )
+
+    return val_dataset

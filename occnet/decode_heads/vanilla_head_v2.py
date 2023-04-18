@@ -6,8 +6,12 @@ from mmseg.models.builder import HEADS
 from occnet.utils import Upsample
 
 
+import warnings
+import torch.nn.functional as F
+
+
 @HEADS.register_module()
-class VanillaHead(BaseModule):
+class VanillaHeadv2(BaseModule):
     def __init__(self,
                  in_channels,
                  channels,
@@ -26,6 +30,18 @@ class VanillaHead(BaseModule):
         self.xy_conv = self.build_3x3_conv_block(scale)
         self.xz_conv = self.build_3x3_conv_block(scale)
         self.yz_conv = self.build_3x3_conv_block(scale)
+
+        # xy, xz, yz weight layers
+        self.xy_weight = ConvModule(channels, 1, 1,
+                                    norm_cfg=self.norm_cfg,
+                                    act_cfg=None)
+        self.xz_weight = ConvModule(channels, 1, 1,
+                                    norm_cfg=self.norm_cfg,
+                                    act_cfg=None)
+        self.yz_weight = ConvModule(channels, 1, 1,
+                                    norm_cfg=self.norm_cfg,
+                                    act_cfg=None)
+        
         # xyz fc layers
         self.fc = nn.Sequential(
             nn.Linear(self.channels, self.channels),
@@ -36,14 +52,6 @@ class VanillaHead(BaseModule):
 
     def build_3x3_conv_block(self, layers):
         conv_list = []
-        conv_list.append(
-            ConvModule(
-                self.in_channels,
-                self.channels,
-                3,
-                padding=1,
-                norm_cfg=self.norm_cfg,
-                act_cfg=self.act_cfg))
         for i in range(layers):
             if i != 0:
                 conv_list.append(
@@ -53,7 +61,7 @@ class VanillaHead(BaseModule):
                         align_corners=False))
             conv_list.append(
                 ConvModule(
-                    self.channels,
+                    self.in_channels if i == 0 else self.channels,
                     self.channels,
                     3,
                     padding=1,
@@ -61,29 +69,52 @@ class VanillaHead(BaseModule):
                     act_cfg=self.act_cfg))
         return nn.Sequential(*conv_list)
 
-    # @force_fp32(apply_to=('cls_score', ))
-    # def loss(self, cls_score, gt_label):
-    #     loss = dict()
-    #     loss['loss_cls'] = nn.functional.cross_entropy(
-    #         cls_score, gt_label, reduction='mean')
-    #     return loss
+    def attention_fusion(self, t1, w1, t2, w2):
+        norm_weight = torch.softmax(torch.cat([w1, w2], dim=1), dim=1)
+        feat = t1 * norm_weight[:, 0:1] + t2 * norm_weight[:, 1:2]
+        return feat
+
+    def expand_to_XYZ(self, xy_feat, xz_feat, yz_feat):
+        B, C, X, Y, Z = *xy_feat.size(), xz_feat.size(3)
+        xy_feat = xy_feat.view(B, C, X, Y, 1)
+        xz_feat = xz_feat.view(B, C, X, 1, Z)
+        yz_feat = yz_feat.view(B, C, 1, Y, Z)
+        return torch.broadcast_tensors(xy_feat, xz_feat, yz_feat)
 
     def forward(self, occ_feats, **kwargs):
         # occ_feats (NCXY, NCXZ, NCYZ)
         yz_feat, xz_feat, xy_feat = occ_feats
+        
         # extract features
         xy_feat = self.xy_conv(xy_feat)
         xz_feat = self.xz_conv(xz_feat)
         yz_feat = self.yz_conv(yz_feat)
-        B, C, X, Y, Z = *xy_feat.size(), xz_feat.size(3)
-        # multiply to expand, and add up
-        xyz_feat = xy_feat.view(B, C, X, Y, 1) * torch.sigmoid(xz_feat).view(B, C, X, 1, Z) + \
-                   xy_feat.view(B, C, X, Y, 1) * torch.sigmoid(yz_feat).view(B, C, 1, Y, Z) + \
-                   xz_feat.view(B, C, X, 1, Z) * torch.sigmoid(xy_feat).view(B, C, X, Y, 1) + \
-                   yz_feat.view(B, C, 1, Y, Z) * torch.sigmoid(xy_feat).view(B, C, X, Y, 1)
+
+        # perspective attention weight
+        xy_weight = self.xy_weight(xy_feat)
+        xz_weight = self.xz_weight(xz_feat)
+        yz_weight = self.yz_weight(yz_feat)
+
+        # expand feat and weight to (B, C, X, Y, Z)
+        xy_feat, xz_feat, yz_feat = self.expand_to_XYZ(xy_feat, xz_feat, yz_feat)
+        xy_weight, xz_weight, yz_weight = self.expand_to_XYZ(xy_weight, xz_weight, yz_weight)
+
+        # perspective attention fusion
+        xyz_feat = self.attention_fusion(xy_feat, xy_weight, xz_feat, xz_weight) + \
+                   self.attention_fusion(xy_feat, xy_weight, yz_feat, yz_weight)
+
         # reshape and fc
+        B, C, X, Y, Z = xyz_feat.size()
         xyz_feat = self.fc(xyz_feat.view(B, C, -1).transpose(1, 2))
         logtis = self.classifier(xyz_feat)  # (B, XYZ, C)
         logtis = logtis.permute(0, 2, 1).reshape(B, -1, X, Y, Z)
 
         return logtis
+
+if __name__ == '__main__':
+    model = VanillaHeadv2(32, 64, 19)
+    xy_feat = torch.randn(2, 32, 64, 32)
+    xz_feat = torch.randn(2, 32, 64, 8)
+    yz_feat = torch.randn(2, 32, 32, 8)
+    logtis = model((yz_feat, xz_feat, xy_feat))
+    print(logtis.shape)
