@@ -148,10 +148,10 @@ class Runner:
                 grid_size = self.cfg.grid_size
                 voxel_min = self.cfg.dataset_params['min_volume_space']
                 voxel_max = self.cfg.dataset_params['max_volume_space']
-                voxel_size = [(e - s) / l for e, s, l in zip(voxel_max, voxel_min, grid_size)]
+                resolution = [(e - s) / l for e, s, l in zip(voxel_max, voxel_min, grid_size)]
                 draw_occ(output[0],
                          voxel_min,
-                         voxel_size,
+                         resolution,
                          save_file,
                          offscreen=True)
 

@@ -10,11 +10,11 @@ def get_grid_coords(dims, resolution):
     :return coords_grid: is the center coords of voxels in the grid
     """
 
-    g_xx = np.arange(0, dims[0]) # [0, 1, ..., 256]
+    g_xx = np.arange(0, dims[0])  # [0, 1, ..., 256]
     # g_xx = g_xx[::-1]
-    g_yy = np.arange(0, dims[1]) # [0, 1, ..., 256]
+    g_yy = np.arange(0, dims[1])  # [0, 1, ..., 256]
     # g_yy = g_yy[::-1]
-    g_zz = np.arange(0, dims[2]) # [0, 1, ..., 32]
+    g_zz = np.arange(0, dims[2])  # [0, 1, ..., 32]
 
     # Obtaining the grid with coords...
     xx, yy, zz = np.meshgrid(g_xx, g_yy, g_zz)
@@ -26,39 +26,41 @@ def get_grid_coords(dims, resolution):
 
     return coords_grid
 
+
 def get_color_palette():
     return np.array(
         [
-            [255, 120,  50, 255],       # barrier              orange
-            [255, 192, 203, 255],       # bicycle              pink
-            [255, 255,   0, 255],       # bus                  yellow
-            [  0, 150, 245, 255],       # car                  blue
-            [  0, 255, 255, 255],       # construction_vehicle cyan
-            [255, 127,   0, 255],       # motorcycle           dark orange
-            [255,   0,   0, 255],       # pedestrian           red
-            [255, 240, 150, 255],       # traffic_cone         light yellow
-            [135,  60,   0, 255],       # trailer              brown
-            [160,  32, 240, 255],       # truck                purple                
-            [255,   0, 255, 255],       # driveable_surface    dark pink
+            [255, 120, 50, 255],  # barrier              orange
+            [255, 192, 203, 255],  # bicycle              pink
+            [255, 255, 0, 255],  # bus                  yellow
+            [0, 150, 245, 255],  # car                  blue
+            [0, 255, 255, 255],  # construction_vehicle cyan
+            [255, 127, 0, 255],  # motorcycle           dark orange
+            [255, 0, 0, 255],  # pedestrian           red
+            [255, 240, 150, 255],  # traffic_cone         light yellow
+            [135, 60, 0, 255],  # trailer              brown
+            [160, 32, 240, 255],  # truck                purple
+            [255, 0, 255, 255],  # driveable_surface    dark pink
             # [175,   0,  75, 255],       # other_flat           dark red
             [139, 137, 137, 255],
-            [ 75,   0,  75, 255],       # sidewalk             dard purple
-            [150, 240,  80, 255],       # terrain              light green          
-            [230, 230, 250, 255],       # manmade              white
-            [  0, 175,   0, 255],       # vegetation           green
-            [  0, 255, 127, 255],       # ego car              dark cyan
-            [255,  99,  71, 255],       # ego car
-            [  0, 191, 255, 255]        # ego car
+            [75, 0, 75, 255],  # sidewalk             dard purple
+            [150, 240, 80, 255],  # terrain              light green
+            [230, 230, 250, 255],  # manmade              white
+            [0, 175, 0, 255],  # vegetation           green
+            [0, 255, 127, 255],  # ego car              dark cyan
+            [255, 99, 71, 255],  # ego car
+            [0, 191, 255, 255]  # ego car
         ]
     ).astype(np.uint8)
+
 
 def draw_simple_car(w, h, z, grid_coords):
     """ Draw a simple car at the middle
     """
     car_vox_range = np.array([
-        [w//2 - 2 - 4, w//2 - 2 + 4],
-        [h//2 - 2 - 4, h//2 - 2 + 4],
-        [z//2 - 2 - 3, z//2 - 2 + 3]
+        [w // 2 - 2 - 4, w // 2 - 2 + 4],
+        [h // 2 - 2 - 4, h // 2 - 2 + 4],
+        [z // 2 - 2 - 3, z // 2 - 2 + 3]
     ], dtype=np.int)
     car_x = np.arange(car_vox_range[0, 0], car_vox_range[0, 1])
     car_y = np.arange(car_vox_range[1, 0], car_vox_range[1, 1])
@@ -80,18 +82,18 @@ def draw_simple_car(w, h, z, grid_coords):
 
 
 def draw(
-    voxels,          # semantic occupancy predictions
-    pred_pts,        # lidarseg predictions
-    vox_origin,
-    voxel_size=0.2,  # voxel size in the real world
-    grid=None,       # voxel coordinates of point cloud
-    pt_label=None,   # label of point cloud
-    save_dir=None,
-    cam_positions=None,
-    focal_positions=None,
-    timestamp=None,
-    offscreen=False,
-    mode=0,
+        voxels,  # semantic occupancy predictions
+        pred_pts,  # lidarseg predictions
+        vox_origin,
+        voxel_size=0.2,  # voxel size in the real world
+        grid=None,  # voxel coordinates of point cloud
+        pt_label=None,  # label of point cloud
+        save_dir=None,
+        cam_positions=None,
+        focal_positions=None,
+        timestamp=None,
+        offscreen=False,
+        mode=0,
 ):
     mlab.options.offscreen = offscreen
 
@@ -129,8 +131,8 @@ def draw(
     # Remove empty and unknown voxels
     fov_voxels = fov_grid_coords[
         (fov_grid_coords[:, 3] > 0) & (fov_grid_coords[:, 3] < 20)
-    ]
-    
+        ]
+
     figure = mlab.figure(size=(2560, 1440), bgcolor=(1, 1, 1))
     # Draw occupied inside FOV voxels
     voxel_size = sum(voxel_size) / 3
@@ -144,24 +146,24 @@ def draw(
         mode="cube",
         opacity=1.0,
         vmin=1,
-        vmax=19, # 16
+        vmax=19,  # 16
     )
 
     colors = get_color_palette()
-    
+
     plt_plot_fov.glyph.scale_mode = "scale_by_vector"
     plt_plot_fov.module_manager.scalar_lut_manager.lut.table = colors
 
     scene = figure.scene
-    scene.camera.position = [  0.75131739, -35.08337438,  16.71378558]
-    scene.camera.focal_point = [  0.75131739, -34.21734897,  16.21378558]
+    scene.camera.position = [0.75131739, -35.08337438, 16.71378558]
+    scene.camera.focal_point = [0.75131739, -34.21734897, 16.21378558]
     scene.camera.view_angle = 40.0
     scene.camera.view_up = [0.0, 0.0, 1.0]
     scene.camera.clipping_range = [0.01, 300.]
     scene.camera.compute_view_plane_normal()
     scene.render()
 
-    if offscreen :
+    if offscreen:
         index = save_dir.name
         fig_name = 'fig' + index + '.png'
         all_frame_dir = save_dir.parents[1] / 'all_frames'
@@ -169,77 +171,7 @@ def draw(
         mlab.savefig(str(all_frame_dir / fig_name))
     else:
         mlab.show()
-    mlab.clf() # clear figure, or the memory will leak
-    mlab.close(figure)
-    mlab.close(all=True)
-    
-    return len(fov_voxels)
-
-
-def draw_occ(
-    voxels,          # semantic occupancy predictions
-    vox_origin,
-    voxel_size,      # voxel size in the real world
-    save_name=None,
-    offscreen=False,
-):
-    """ A minimum function to draw predicted occupancy, which does not require gt
-    """
-    mlab.options.offscreen = offscreen
-
-    # Compute the voxels coordinates
-    grid_coords = get_grid_coords(
-        [voxels.shape[0], voxels.shape[1], voxels.shape[2]], voxel_size
-    ) + np.array(vox_origin, dtype=np.float32).reshape([1, 3])  # minus?
-
-    grid_coords = np.vstack([grid_coords.T, voxels.reshape(-1)]).T
-    
-    grid_coords[grid_coords[:, 3] == 17, 3] = 20
-
-    # Get the voxels inside FOV
-    fov_grid_coords = grid_coords
-
-    # Remove empty and unknown voxels
-    fov_voxels = fov_grid_coords[
-        (fov_grid_coords[:, 3] > 0) & (fov_grid_coords[:, 3] < 20)
-    ]
-    print(len(fov_voxels))
-    
-    figure = mlab.figure(size=(2560, 1440), bgcolor=(1, 1, 1))
-    # Draw occupied inside FOV voxels
-    voxel_size = sum(voxel_size) / 3
-    plt_plot_fov = mlab.points3d(
-        fov_voxels[:, 1],
-        fov_voxels[:, 0],
-        fov_voxels[:, 2],
-        fov_voxels[:, 3],
-        colormap="viridis",
-        scale_factor=0.95 * voxel_size,
-        mode="cube",
-        opacity=1.0,
-        vmin=1,
-        vmax=19, # 16
-    )
-
-    colors = get_color_palette()
-    
-    plt_plot_fov.glyph.scale_mode = "scale_by_vector"
-    plt_plot_fov.module_manager.scalar_lut_manager.lut.table = colors
-
-    scene = figure.scene
-    scene.camera.position = [  0.75131739, -35.08337438,  16.71378558]
-    scene.camera.focal_point = [  0.75131739, -34.21734897,  16.21378558]
-    scene.camera.view_angle = 40.0
-    scene.camera.view_up = [0.0, 0.0, 1.0]
-    scene.camera.clipping_range = [0.01, 300.]
-    scene.camera.compute_view_plane_normal()
-    scene.render()
-
-    if offscreen :
-        mlab.savefig(str(save_name))
-    else:
-        mlab.show()
-    mlab.clf() # clear figure, or the memory will leak
+    mlab.clf()  # clear figure, or the memory will leak
     mlab.close(figure)
     mlab.close(all=True)
 
@@ -259,7 +191,7 @@ def draw_with_vedo(
     offscreen=False,
     mode=0,
 ):
-    """ An alternative to mayavi. Which is 20% faster than mayavi.
+    """ Vedo is slightly faster than mayavi, and well maintained.
     """
     w, h, z = voxels.shape
     grid = grid.astype(np.int)
