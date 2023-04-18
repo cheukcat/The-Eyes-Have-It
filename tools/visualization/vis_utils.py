@@ -79,18 +79,18 @@ def draw_simple_car(w, h, z, grid_coords):
 
 
 def draw(
-    voxels,          # semantic occupancy predictions
-    pred_pts,        # lidarseg predictions
-    vox_origin,
-    voxel_size=0.2,  # voxel size in the real world
-    grid=None,       # voxel coordinates of point cloud
-    pt_label=None,   # label of point cloud
-    save_dir=None,
-    cam_positions=None,
-    focal_positions=None,
-    timestamp=None,
-    offscreen=False,
-    mode=0,
+        voxels,  # semantic occupancy predictions
+        pred_pts,  # lidarseg predictions
+        vox_origin,
+        voxel_size=0.2,  # voxel size in the real world
+        grid=None,  # voxel coordinates of point cloud
+        pt_label=None,  # label of point cloud
+        save_dir=None,
+        cam_positions=None,
+        focal_positions=None,
+        timestamp=None,
+        offscreen=False,
+        mode=0,
 ):
     mlab.options.offscreen = offscreen
 
@@ -128,8 +128,8 @@ def draw(
     # Remove empty and unknown voxels
     fov_voxels = fov_grid_coords[
         (fov_grid_coords[:, 3] > 0) & (fov_grid_coords[:, 3] < 20)
-    ]
-    
+        ]
+
     figure = mlab.figure(size=(2560, 1440), bgcolor=(1, 1, 1))
     # Draw occupied inside FOV voxels
     voxel_size = sum(voxel_size) / 3
@@ -143,98 +143,32 @@ def draw(
         mode="cube",
         opacity=1.0,
         vmin=1,
-        vmax=19, # 16
+        vmax=19,  # 16
     )
 
     colors = get_color_palette()
-    
+
     plt_plot_fov.glyph.scale_mode = "scale_by_vector"
     plt_plot_fov.module_manager.scalar_lut_manager.lut.table = colors
 
     scene = figure.scene
-    scene.camera.position = [  0.75131739, -35.08337438,  16.71378558]
-    scene.camera.focal_point = [  0.75131739, -34.21734897,  16.21378558]
+    scene.camera.position = [0.75131739, -35.08337438, 16.71378558]
+    scene.camera.focal_point = [0.75131739, -34.21734897, 16.21378558]
     scene.camera.view_angle = 40.0
     scene.camera.view_up = [0.0, 0.0, 1.0]
     scene.camera.clipping_range = [0.01, 300.]
     scene.camera.compute_view_plane_normal()
     scene.render()
 
-    if offscreen :
-        mlab.savefig(str(Path(save_dir) / 'fig.png'))
+    if offscreen:
+        index = save_dir.name
+        fig_name = 'fig' + index + '.png'
+        all_frame_dir = save_dir.parents[1] / 'all_frames'
+        mlab.savefig(str(save_dir / fig_name))
+        mlab.savefig(str(all_frame_dir / fig_name))
     else:
         mlab.show()
-    mlab.clf() # clear figure, or the memory will leak
-    mlab.close(figure)
-    mlab.close(all=True)
-    
-    return len(fov_voxels)
-
-
-def draw_occ(
-    voxels,          # semantic occupancy predictions
-    vox_origin,
-    voxel_size,      # voxel size in the real world
-    save_name=None,
-    offscreen=False,
-):
-    """ A minimum function to draw predicted occupancy, which does not require gt
-    """
-    mlab.options.offscreen = offscreen
-
-    # Compute the voxels coordinates
-    grid_coords = get_grid_coords(
-        [voxels.shape[0], voxels.shape[1], voxels.shape[2]], voxel_size
-    ) + np.array(vox_origin, dtype=np.float32).reshape([1, 3])  # minus?
-
-    grid_coords = np.vstack([grid_coords.T, voxels.reshape(-1)]).T
-    
-    grid_coords[grid_coords[:, 3] == 17, 3] = 20
-
-    # Get the voxels inside FOV
-    fov_grid_coords = grid_coords
-
-    # Remove empty and unknown voxels
-    fov_voxels = fov_grid_coords[
-        (fov_grid_coords[:, 3] > 0) & (fov_grid_coords[:, 3] < 20)
-    ]
-    print(len(fov_voxels))
-    
-    figure = mlab.figure(size=(2560, 1440), bgcolor=(1, 1, 1))
-    # Draw occupied inside FOV voxels
-    voxel_size = sum(voxel_size) / 3
-    plt_plot_fov = mlab.points3d(
-        fov_voxels[:, 1],
-        fov_voxels[:, 0],
-        fov_voxels[:, 2],
-        fov_voxels[:, 3],
-        colormap="viridis",
-        scale_factor=0.95 * voxel_size,
-        mode="cube",
-        opacity=1.0,
-        vmin=1,
-        vmax=19, # 16
-    )
-
-    colors = get_color_palette()
-    
-    plt_plot_fov.glyph.scale_mode = "scale_by_vector"
-    plt_plot_fov.module_manager.scalar_lut_manager.lut.table = colors
-
-    scene = figure.scene
-    scene.camera.position = [  0.75131739, -35.08337438,  16.71378558]
-    scene.camera.focal_point = [  0.75131739, -34.21734897,  16.21378558]
-    scene.camera.view_angle = 40.0
-    scene.camera.view_up = [0.0, 0.0, 1.0]
-    scene.camera.clipping_range = [0.01, 300.]
-    scene.camera.compute_view_plane_normal()
-    scene.render()
-
-    if offscreen :
-        mlab.savefig(str(save_name))
-    else:
-        mlab.show()
-    mlab.clf() # clear figure, or the memory will leak
+    mlab.clf()  # clear figure, or the memory will leak
     mlab.close(figure)
     mlab.close(all=True)
 

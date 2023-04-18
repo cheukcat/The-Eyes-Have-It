@@ -30,7 +30,7 @@ def draw_occ(
         vox_origin,
         voxel_size,  # voxel size in the real world
         save_name=None,
-        offscreen=False,
+        offscreen=True,
 ):
     """ A minimum function to draw predicted occupancy, which does not require gt
     """
