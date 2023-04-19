@@ -147,8 +147,9 @@ class InverseMatrixVT(BaseModule):
         vt_yz, vt_xz, vt_xy, valid_nc = self.get_vt_matrix(img_feats, img_metas)
         # flatten img_feats
         B, N, C, H, W = img_feats.shape
-        # TODO: 这里还有bug
-        # img_feats = img_feats[:, valid_nc, :, :, :]
+        valid_nc = valid_nc.unsqueeze(2).unsqueeze(3).unsqueeze(4).\
+            expand(-1, -1, C, H, W)
+        img_feats = torch.gather(img_feats, 1, valid_nc)
         img_feats = img_feats.permute(0, 2, 1, 3, 4).reshape(B, C, -1)
         # B, C, (Y * Z, X * Z, X * Y)
         X, Y, Z = self.grid_size
