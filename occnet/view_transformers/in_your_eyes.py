@@ -57,7 +57,9 @@ class AllYouNeedIsInYourEyes(BaseModule):
         # yz plane
         left_yz = torch.cat([occ_feats_yz[2], occ_feats_yz[0]], dim=2)
         right_yz = torch.cat([occ_feats_yz[3], occ_feats_yz[1]], dim=2)
+        global_yz = torch.cat([left_yz, right_yz], dim=0)
         # xz plane
         front_xz = torch.cat([occ_feats_xz[0], occ_feats_xz[1]], dim=2)
         rear_xz = torch.cat([occ_feats_xz[2], occ_feats_xz[3]], dim=2)
-        return global_xy, left_yz, right_yz, front_xz, rear_xz
+        global_xz = torch.cat([front_xz, rear_xz], dim=0)
+        return global_yz, global_xz, global_xy
