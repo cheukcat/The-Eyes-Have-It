@@ -14,11 +14,7 @@ tpv_h_ = 100
 tpv_w_ = 100
 tpv_z_ = 8
 scale = 2
-grid_size_vt = [tpv_h_, tpv_w_, tpv_z_]
-depth_size = [tpv_h_ * scale // 2, tpv_w_ * scale // 2, tpv_z_ * scale // 2]
 grid_size = [tpv_h_ * scale, tpv_w_ * scale, tpv_z_ * scale]
-num_points_in_pillar = [4, 32, 32]
-num_points = [8, 64, 64]
 nbr_class = 18
 
 # model settings
@@ -48,7 +44,7 @@ model = dict(
         type='AllYouNeedIsInYourEyes',
         feature_strides=[16, 32],
         in_index=1,
-        grid_size=grid_size_vt,
+        grid_size=[tpv_h_, tpv_w_, tpv_z_],
         x_bound=[-51.2, 51.2],
         y_bound=[-51.2, 51.2],
         z_bound=[-5., 3.],
@@ -58,6 +54,6 @@ model = dict(
         in_channels=_dim_,
         channels=_dim_ // 2,
         num_classes=nbr_class,
-        depth_size=depth_size,
+        depth_size=[tpv_h_ * scale // 2, tpv_w_ * scale // 2, tpv_z_ * scale],
         scale=scale)
 )
