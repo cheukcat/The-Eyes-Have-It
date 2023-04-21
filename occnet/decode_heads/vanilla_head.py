@@ -16,6 +16,7 @@ class VanillaHead(BaseModule):
                  norm_cfg=None,
                  act_cfg=dict(type='ReLU')):
         super().__init__()
+        self.fp16_enabled = False
         self.in_channels = in_channels
         self.channels = channels
         self.num_classes = num_classes
