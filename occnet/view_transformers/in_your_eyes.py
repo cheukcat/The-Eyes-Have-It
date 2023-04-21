@@ -15,10 +15,10 @@ class AllYouNeedIsInYourEyes(BaseModule):
                  y_bound=[-51.2, 51.2],
                  z_bound=[-5., 3.],
                  sampling_rate=4,
-                 num_cams=3):
+                 num_cams_per_quadrant=3):
         super().__init__()
         self.grid_size = grid_size
-        self.num_cams = num_cams
+        self.num_cams = num_cams_per_quadrant
         self.sub_grid_size = [grid_size[0] // 2,
                               grid_size[1] // 2,
                               grid_size[2]]
@@ -38,7 +38,7 @@ class AllYouNeedIsInYourEyes(BaseModule):
                                    y_bound=self.y_bound[i],
                                    z_bound=self.z_bound,
                                    sampling_rate=sampling_rate,
-                                   num_cams=3)
+                                   num_cams=self.num_cams)
             self.imvts.append(imvt)
 
     def forward(self, img_feats, img_metas):
