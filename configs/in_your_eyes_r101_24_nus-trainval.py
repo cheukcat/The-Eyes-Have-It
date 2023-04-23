@@ -54,6 +54,5 @@ model = dict(
         in_channels=_dim_,
         channels=_dim_ // 2,
         num_classes=nbr_class,
-        depth_size=[tpv_h_ * scale // 2, tpv_w_ * scale // 2, tpv_z_ * scale],
         scale=scale)
 )
