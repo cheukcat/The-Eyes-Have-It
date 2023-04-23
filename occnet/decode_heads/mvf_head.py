@@ -13,40 +13,43 @@ class MultiViewFusionHead(VanillaHead):
                  in_channels,
                  channels,
                  num_classes,
-                 depth_size=[50, 50, 8],  # attention, depth is only half of grid size on bev!
                  **kwargs):
         super().__init__(in_channels, channels, num_classes, **kwargs)
         # xy, xz, yz depth extractor
-        self.xy_depthnet = self.build_depthnet(depth_size[2])
-        self.xz_depthnet = self.build_depthnet(depth_size[1])
-        self.yz_depthnet = self.build_depthnet(depth_size[0])
+        self.xy_decoder = self.build_3d_decoder()
+        self.xz_decoder = self.build_3d_decoder()
+        self.yz_decoder = self.build_3d_decoder()
 
-    def build_depthnet(self, depth):
-        depthnet = nn.Conv2d(self.channels,
-                             self.channels + depth,
-                             kernel_size=1, padding=0)
-        return depthnet
-
-    def decode_3d(self, x):
-        depth = x[:, self.channels:].softmax(dim=1)
-        x = x[:, :self.channels]
-        occ_feats = depth.unsqueeze(1) * x.unsqueeze(2)
-        return occ_feats
+    def build_3d_decoder(self):
+        decoder = nn.Conv2d(self.channels, self.channels,
+                            kernel_size=1, padding=0)
+        return decoder
 
     def forward(self, occ_feats, **kwargs):
         # occ_feats [2B, C, Y, Z], [2B, C, X, Z], [B, C, X, Y],
         yz_feat, xz_feat, xy_feat = occ_feats
+        # extract features
+        xy_feat = self.xy_conv(xy_feat)
+        xz_feat = self.xz_conv(xz_feat)
+        yz_feat = self.yz_conv(yz_feat)
+        B, C, X, Y, Z = *xy_feat.size(), xz_feat.size(3)
+        # 3d decoder
+        xy_decoder = self.xy_decoder(xy_feat).sigmoid()
+        xz_decoder = self.xz_decoder(xz_feat).sigmoid()
+        yz_decoder = self.yz_decoder(yz_feat).sigmoid()
         # extract & decode features to 3D,
-        # [B, C, X, Y, Z], [2B, C, X, Y // 2, Z], [2B, C, X // 2, Y, Z]
-        xy_feat = self.decode_3d(self.xy_depthnet(self.xy_conv(xy_feat))).permute(0, 1, 3, 4, 2)
-        xz_feat = self.decode_3d(self.xz_depthnet(self.xz_conv(xz_feat))).permute(0, 1, 3, 2, 4)
-        yz_feat = self.decode_3d(self.xz_depthnet(self.yz_conv(yz_feat)))
-        B, C, X, Y, Z = xy_feat.shape
-        # rear, front
-        xz_feat = torch.cat([xz_feat[:B], xz_feat[B:]], dim=3)
-        # left, right
-        yz_feat = torch.cat([yz_feat[:B], yz_feat[B:]], dim=2)
-        xyz_feat = xy_feat + xz_feat + yz_feat
+        rear_feats = xy_feat[:, :, :, :(Y // 2)].unsqueeze(-1) * xz_decoder[:B].unsqueeze(3) + \
+                     xz_feat[:B].unsqueeze(3) * xy_decoder[:, :, :, :(Y // 2)].unsqueeze(-1)
+        front_feats = xy_feat[:, :, :, (Y // 2):].unsqueeze(-1) * xz_decoder[B:].unsqueeze(3) + \
+                      xz_feat[B:].unsqueeze(3) * xy_decoder[:, :, :, (Y // 2):].unsqueeze(-1)
+        left_feats = xy_feat[:, :, :(X // 2), :].unsqueeze(-1) * yz_decoder[:B].unsqueeze(2) + \
+                     yz_feat[:B].unsqueeze(2) * xy_decoder[:, :, :(X // 2), :].unsqueeze(-1)
+        right_feats = xy_feat[:, :, (X // 2):, :].unsqueeze(-1) * yz_decoder[B:].unsqueeze(2) + \
+                      yz_feat[B:].unsqueeze(2) * xy_decoder[:, :, (X // 2):, :].unsqueeze(-1)
+
+        xyz_feat = torch.cat([rear_feats, front_feats], dim=3) + \
+                   torch.cat([left_feats, right_feats], dim=2)
+
         # reshape and fc
         xyz_feat = self.fc(xyz_feat.reshape(B, C, -1).transpose(1, 2))
         logtis = self.classifier(xyz_feat)  # (B, XYZ, C)
