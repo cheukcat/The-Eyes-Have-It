@@ -48,7 +48,7 @@ class MultiViewFusionHead(VanillaHead):
         yz_feat = torch.cat([yz_feat[:B], yz_feat[B:]], dim=2)
         xyz_feat = xy_feat + xz_feat + yz_feat
         # reshape and fc
-        xyz_feat = self.fc(xyz_feat.view(B, C, -1).transpose(1, 2))
+        xyz_feat = self.fc(xyz_feat.reshape(B, C, -1).transpose(1, 2))
         logtis = self.classifier(xyz_feat)  # (B, XYZ, C)
         logtis = logtis.permute(0, 2, 1).reshape(B, -1, X, Y, Z)
 
