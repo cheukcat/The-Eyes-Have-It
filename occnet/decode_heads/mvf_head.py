@@ -1,9 +1,6 @@
 import torch
 import torch.nn as nn
-from mmcv.cnn import ConvModule
-from mmcv.runner import BaseModule, force_fp32
 from mmseg.models.builder import HEADS
-from occnet.utils import Upsample
 from .vanilla_head import VanillaHead
 
 
