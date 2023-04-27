@@ -28,7 +28,7 @@ TPVFormer/data
 ### Training
 1. Training VanillaOcc on 3090 with 24G GPU memory.
 ```
-bash launcher.sh config/vanilla_occ_r50_fpn_1x_nus-trainval.py work_dirs/vanilla_occ
+bash launcher.sh configs/vanilla_occ_r50_fpn_1x_nus-trainval.py work_dirs/vanilla_occ
 ```
 
 ## Snapshot
