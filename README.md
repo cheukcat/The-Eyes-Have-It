@@ -26,11 +26,13 @@ TPVFormer/data
 ```
 ## Getting Started
 ### Training
-1. Training VanillaOcc on 3090 with 24G GPU memory.
+1. Pretrained weights is highly recommended, please download from https://github.com/zhiqi-li/storage/releases/download/v1.0/r101_dcn_fcos3d_pretrain.pth and put it in ckpts/
+
+2. Training VanillaOcc on 3090 with 24G GPU memory.
 ```
 bash launcher.sh configs/vanilla_occ_r50_fpn_1x_nus-trainval.py work_dirs/vanilla_occ
 ```
-2. Training InYourEyes, which is a GPU memory optimized version of VanillaOcc.
+3. Training InYourEyes, which is a GPU memory optimized version of VanillaOcc.
 ```
 bash launcher.sh configs/in_your_eyes_r101_24_nus-trainval.py work_dirs/in_your_eyes
 ```
