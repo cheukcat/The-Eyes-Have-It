@@ -30,7 +30,10 @@ TPVFormer/data
 ```
 bash launcher.sh configs/vanilla_occ_r50_fpn_1x_nus-trainval.py work_dirs/vanilla_occ
 ```
-
+2. Training InYourEyes, which is a GPU memory optimized version of VanillaOcc.
+```
+bash launcher.sh configs/in_your_eyes_r101_24_nus-trainval.py work_dirs/in_your_eyes
+```
 ## Snapshot
 ### Motivation
 **1.** Generate BEV freespace via 2D Segmentation is commonly used in adas industry, but it has limitations in many real-world scenarios.
@@ -48,10 +51,6 @@ bash launcher.sh configs/vanilla_occ_r50_fpn_1x_nus-trainval.py work_dirs/vanill
 **1.** Inverse MatrixVT with complexity：
 $$(N_c * H * W) * (X * Y + Y * Z + Z * X) * C$$
 **2.** Decode 3D space with Tri-Perspective View
-```Python
-xyz_feat = xy_feat.view(B, C, X, Y, 1) * xz_feat.view(B, C, X, 1, Z) + \
-           xy_feat.view(B, C, X, Y, 1) * yz_feat.view(B, C, 1, Y, Z)
-```
 **3.** Sparse supervision on lidar annotations
 ## Experiments
 TBD
