@@ -14,8 +14,10 @@ class InverseMatrixVT(BaseModule):
                  x_bound=[-51.2, 51.2],
                  y_bound=[-51.2, 51.2],
                  z_bound=[-5., 3.],
-                 sampling_rate=4):
+                 sampling_rate=4,
+                 num_cams=None):
         super().__init__()
+        self.fp16_enabled = False
         self.grid_size = torch.tensor(grid_size)
         self.x_bound = x_bound
         self.y_bound = y_bound
@@ -27,6 +29,8 @@ class InverseMatrixVT(BaseModule):
         else:
             self.ds_rate = feature_strides
         self.coord = self._create_gridmap_anchor()
+        # topK cam will be selected if turned on
+        self.num_cams = num_cams
 
     def _create_gridmap_anchor(self):
         # create a gridmap anchor with shape of (X, Y, Z, sampling_rate**3, 3)
@@ -53,7 +57,8 @@ class InverseMatrixVT(BaseModule):
         batch_vt = multi_apply(self._get_vt_matrix_single,
                                img_feats,
                                img_metas)
-        return torch.stack(batch_vt[0]), torch.stack(batch_vt[1]), torch.stack(batch_vt[2])
+        res = tuple(torch.stack(vt) for vt in batch_vt)
+        return res
 
     @force_fp32(apply_to=('img_feat', 'img_meta'))
     def _get_vt_matrix_single(self, img_feat, img_meta):
@@ -86,12 +91,25 @@ class InverseMatrixVT(BaseModule):
         ref_points = torch.div(ref_points[..., :2],
                                self.ds_rate,
                                rounding_mode='floor').to(torch.long)
+        # select valid cams
+        if self.num_cams is not None:
+            assert type(self.num_cams) == int
+            valid_cams = torch.logical_not(invalid_w | invalid_h | invalid_d)
+            valid_cams = valid_cams.permute(1, 0, 2).reshape(Nc, -1).sum(dim=-1)
+            _, valid_cams_idx = torch.topk(valid_cams, self.num_cams)
+            ref_points = ref_points[:, valid_cams_idx, :, :]
+            Nc = self.num_cams
+        else:
+            valid_cams_idx = torch.arange(Nc, device=lidar2img.device)
+        # still need (0, 1, 2...) encoding
         cam_index = torch.arange(Nc, device=lidar2img.device) \
             .unsqueeze(0).unsqueeze(2) \
             .repeat(X * Y * Z, 1, S).unsqueeze(-1)
         # ref_points: (X * Y * Z, Nc * S, 3), 3: (W, H, Nc)
         ref_points = torch.cat([ref_points, cam_index], dim=-1)
-        ref_points[(invalid_w | invalid_h | invalid_d)] = -1
+        ref_points[(invalid_w[:, valid_cams_idx] |
+                    invalid_h[:, valid_cams_idx] |
+                    invalid_d[:, valid_cams_idx])] = -1
         ref_points = ref_points.view(X * Y * Z, -1, 3)
         # ref_points_flatten: (X * Y * Z, Nc * S), 1: H * W * nc + W * h + w
         ref_points_flatten = ref_points[..., 2] * H * W + \
@@ -122,13 +140,16 @@ class InverseMatrixVT(BaseModule):
              valid_idx_z[:, 0]] = 1
         vt_z /= vt_z.sum(0).clip(min=1)
 
-        return vt_x, vt_y, vt_z
+        return vt_x, vt_y, vt_z, valid_cams_idx
 
     def forward(self, img_feats, img_metas):
         img_feats = img_feats[self.in_index]
-        vt_yz, vt_xz, vt_xy = self.get_vt_matrix(img_feats, img_metas)
+        vt_yz, vt_xz, vt_xy, valid_nc = self.get_vt_matrix(img_feats, img_metas)
         # flatten img_feats
         B, N, C, H, W = img_feats.shape
+        valid_nc = valid_nc.unsqueeze(2).unsqueeze(3).unsqueeze(4).\
+            expand(-1, -1, C, H, W)
+        img_feats = torch.gather(img_feats, 1, valid_nc)
         img_feats = img_feats.permute(0, 2, 1, 3, 4).reshape(B, C, -1)
         # B, C, (Y * Z, X * Z, X * Y)
         X, Y, Z = self.grid_size

@@ -1,5 +1,6 @@
 from mayavi import mlab
-from pathlib import Path
+from vedo import *
+from easydict import EasyDict
 import numpy as np
 
 
@@ -173,5 +174,103 @@ def draw(
     mlab.clf()  # clear figure, or the memory will leak
     mlab.close(figure)
     mlab.close(all=True)
+
+    return len(fov_voxels)
+
+def draw_with_vedo(
+    voxels,          # semantic occupancy predictions
+    pred_pts,        # lidarseg predictions
+    vox_origin,
+    voxel_size=0.2,  # voxel size in the real world
+    grid=None,       # voxel coordinates of point cloud
+    pt_label=None,   # label of point cloud
+    save_dir=None,
+    cam_positions=None,
+    focal_positions=None,
+    timestamp=None,
+    offscreen=False,
+    mode=0,
+):
+    """ Vedo is slightly faster than mayavi, and well maintained.
+    """
+    w, h, z = voxels.shape
+    grid = grid.astype(np.int)
+
+    # Compute the voxels coordinates
+    grid_coords = get_grid_coords(
+        [voxels.shape[0], voxels.shape[1], voxels.shape[2]], voxel_size
+    ) + np.array(vox_origin, dtype=np.float32).reshape([1, 3])  # minus?
+
+    if mode == 0:
+        grid_coords = np.vstack([grid_coords.T, voxels.reshape(-1)]).T
+        draw_simple_car(w, h, z, grid_coords)
+    elif mode == 1:
+        indexes = grid[:, 0] * h * z + grid[:, 1] * z + grid[:, 2]
+        indexes, pt_index = np.unique(indexes, return_index=True)
+        pred_pts = pred_pts[pt_index]
+        grid_coords = grid_coords[indexes]
+        grid_coords = np.vstack([grid_coords.T, pred_pts.reshape(-1)]).T
+    elif mode == 2:
+        indexes = grid[:, 0] * h * z + grid[:, 1] * z + grid[:, 2]
+        indexes, pt_index = np.unique(indexes, return_index=True)
+        gt_label = pt_label[pt_index]
+        grid_coords = grid_coords[indexes]
+        grid_coords = np.vstack([grid_coords.T, gt_label.reshape(-1)]).T
+    else:
+        raise NotImplementedError
+
+    grid_coords[grid_coords[:, 3] == 17, 3] = 20
+
+    # Get the voxels inside FOV
+    fov_grid_coords = grid_coords
+
+    # Remove empty and unknown voxels
+    fov_voxels = fov_grid_coords[
+        (fov_grid_coords[:, 3] > 0) & (fov_grid_coords[:, 3] < 20)
+    ]
+    # permute (y, x, z) to (x, y, z)
+    fov_voxels[:, [0, 1]] = fov_voxels[:, [1, 0]]
+
+    # build plotter
+    plotter = Plotter(offscreen=offscreen)
+
+    colors = get_color_palette()[:, :3]
+    cube_size = sum(voxel_size) / 3 * 0.95
+    
+    pts_center = Points(fov_voxels[:, :3])
+    cube = Cube(side=cube_size)
+    # TODO: check the -1 index
+    colors = colors[fov_voxels[:, 3].astype(np.int32) - 1]
+    # put cube at each point, and adjust the surface settings to make it look nicer
+    occ_scene = Glyph(pts_center, cube, 
+                      c=colors).lighting(ambient=0.8, diffuse=0.2)
+
+    # set camera position
+    camera = EasyDict()
+    camera.position = [  0.75131739, -35.08337438,  16.71378558]
+    camera.focal_point = [  0.75131739, -34.21734897,  16.21378558]
+    # camera.focal_point = [  0,0,0]
+    camera.view_angle = 40.0
+    camera.viewup = [0.0, 0.0, 1.0]
+    camera.clipping_range = [0.01, 300.]
+    
+    # load a simple car object
+    car = load("tools/tutorials/assets/car.obj")
+    car.lighting(ambient=0.8, diffuse=1.)
+    car.scale(0.8)
+    car.rotate_z(90)
+    car.pos(-0.3, -1, -1)
+    car.c('gray')
+
+    # show and save
+    plotter.show(occ_scene, car, camera=camera, size=(2560, 1440))
+    if offscreen:
+        index = save_dir.name
+        fig_name = 'fig' + index + '.png'
+        all_frame_dir = save_dir.parents[1] / 'all_frames'
+        plotter.screenshot(str(save_dir / fig_name))
+        plotter.screenshot(str(all_frame_dir / fig_name))
+    
+    plotter.clear()
 
     return len(fov_voxels)
