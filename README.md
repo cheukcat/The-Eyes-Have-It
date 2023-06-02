@@ -51,6 +51,7 @@ bash launcher.sh configs/in_your_eyes_r101_24_nus-trainval.py work_dirs/in_your_
 **1.** Inverse MatrixVT with complexity：
 $$(N_c * H * W) * (X * Y + Y * Z + Z * X) * C$$
 **2.** Decode 3D space with Tri-Perspective View
+
 **3.** Sparse supervision on lidar annotations
 ## Experiments
 TBD
